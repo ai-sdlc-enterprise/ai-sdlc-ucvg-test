@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Bug Fixes
+
+* convention detector — eliminate three false-positives surfaced by the React/Vite dogfood case (AISDLC-80): (1) PascalCase components + camelCase hooks/stores no longer flagged as `mixed` when `package.json` declares React; (2) testing convention enumerates ALL detected directories (`__tests__/`, `tests/`, `tests/e2e/`, `src/tests/`, `cypress/`, `e2e/`, ...) plus collocated `*.test.*` instead of collapsing to a single label; (3) Vite/TS/webpack path aliases (`@components`, `@engine`, ...) now parsed from `vite.config.{js,ts,mjs,cjs}`, `tsconfig.json`, `jsconfig.json`, and `webpack.config.*` and reported as their own bucket. `detectConventions` is now async and accepts an optional `{ repoPath }` for project-config-aware detection (legacy file-only signature still works without `repoPath`).
+
 ### Features
 
 * `init --role <tier>` flag for `agent-role.yaml` tool defaults (AISDLC-79). Three tiers ship with intent-driven tool surfaces: `coding` (default — `Edit, Write, Read, Glob, Grep, Bash, NotebookEdit`), `research` (coding + `WebFetch, WebSearch`), `meta` (research + `Task, Skill`). Invalid `--role` values exit 1 with the accepted list. **Migration: nothing changes for current users** — `init` with no flag uses the `coding` tier (the previous default plus `NotebookEdit`), and existing `agent-role.yaml` files are still skipped (never overwritten). See `backlog/decisions/AISDLC-79-agent-role-tools-defaults.md` for rationale and tier rationale.

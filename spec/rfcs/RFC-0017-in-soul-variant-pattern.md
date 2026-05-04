@@ -15,9 +15,9 @@ requiresDocs: []
 # RFC-0017: In-Soul Variant Pattern
 
 **Document type:** Normative (draft)
-**Status:** Draft v0.1 — Initial stub. Full spec pending practitioner validation pass against InternalAdopter four-soul platform (ProductA / ProductB / ProductC / ProductD).
+**Status:** Draft v0.1 — Initial stub. Full spec pending practitioner validation pass against a four-product utility software platform.
 **Created:** 2026-05-04
-**Authors:** Morgan Hirtle (Design Authority, InternalAdopter)
+**Authors:** Morgan Hirtle
 **Requires:** RFC-0009 (Tessellated Design Intent Documents)
 
 > The bold-style status block above is preserved for human readability. The

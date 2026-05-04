@@ -16,9 +16,9 @@ requiresDocs: []
 # RFC-0018: In-Soul Journey Pattern
 
 **Document type:** Normative (draft)
-**Status:** Draft v0.1 — Initial stub. Full spec pending practitioner validation pass against InternalAdopter accessibility audit pipeline.
+**Status:** Draft v0.1 — Initial stub. Full spec pending practitioner validation pass against a utility software platform accessibility audit pipeline.
 **Created:** 2026-05-04
-**Authors:** Morgan Hirtle (Design Authority, InternalAdopter)
+**Authors:** Morgan Hirtle
 **Requires:** RFC-0009 (Tessellated Design Intent Documents), RFC-0017 (In-Soul Variant Pattern)
 
 > The bold-style status block above is preserved for human readability. The

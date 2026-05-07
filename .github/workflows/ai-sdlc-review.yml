@@ -2,10 +2,11 @@ name: AI-SDLC PR Review
 
 on:
   pull_request:
-    # AISDLC-218: drop `opened` (would fire on draft opens before reviewers
-    # have run + envelope is signed). Add `ready_for_review` so the workflow
-    # fires exactly once per PR, after `gh pr ready`.
-    types: [synchronize, reopened, ready_for_review]
+    # AISDLC-218 (revised): keep `opened` (so direct-ready PRs without `--draft`
+    # fire CI) AND add `ready_for_review` (canonical fire-once trigger when a
+    # draft flips to ready). The job-level `if: !draft` guards skip draft opens
+    # so reviewers don't run before the envelope is signed.
+    types: [opened, synchronize, reopened, ready_for_review]
     branches: [main]
     # AISDLC-131: docs-only PRs (RFC drafts, backlog edits, READMEs) skip the
     # 3-reviewer subagent fan-out — those iterations don't need code review and

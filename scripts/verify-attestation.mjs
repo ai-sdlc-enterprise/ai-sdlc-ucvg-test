@@ -985,6 +985,38 @@ export function runVerifier({ headSha, baseSha, repoRoot = process.cwd() }) {
     console.log(`[ai-sdlc/attestation] pipelineVersion: <missing> (legacy envelope)`);
   }
 
+  // --- Forensic logging: harness (AISDLC-202.3) -------------------------
+  // Surface which harness (e.g. codex, claude-code) produced the verdicts.
+  // Optional field — legacy envelopes (before AISDLC-202.3) carry no
+  // `harness` field; log `<unknown>` so operators can distinguish "unknown
+  // harness" from "field present but empty".
+  const matchedHarness = chosen.entry.predicate?.harness;
+  if (
+    matchedHarness &&
+    typeof matchedHarness === 'object' &&
+    typeof matchedHarness.name === 'string'
+  ) {
+    // Apply paranoia regex BEFORE schema validation runs (validatePredicateShape
+    // executes inside verifyAttestation() below). Mirrors the pipelineVersion
+    // guard above (lines ~980-983); operator-local trust model bounds the threat
+    // but a CR/LF/ANSI in harness.name/version would otherwise reach CI logs.
+    const SAFE_NAME = /^[A-Za-z0-9._-]+$/;
+    const SAFE_VERSION = /^[A-Za-z0-9.\-+]+$/;
+    const safeName = SAFE_NAME.test(matchedHarness.name)
+      ? matchedHarness.name
+      : '<unsafe value redacted>';
+    const safeVersion =
+      typeof matchedHarness.version === 'string' && SAFE_VERSION.test(matchedHarness.version)
+        ? matchedHarness.version
+        : null;
+    const harnessLine = safeVersion ? `${safeName}@${safeVersion}` : safeName;
+    console.log(`[ai-sdlc/attestation] harness: ${harnessLine}`);
+  } else {
+    console.log(
+      `[ai-sdlc/attestation] harness: <unknown> (legacy envelope or claude-code default)`,
+    );
+  }
+
   // --- Verify signature + schema (delegates to runtime) -----------------
   // The orchestrator's verifyAttestation does its own (regex-bound) schema
   // validation, schemaVersion allowlist re-check, signature check, and the

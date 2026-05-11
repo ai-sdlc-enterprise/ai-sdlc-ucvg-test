@@ -216,10 +216,29 @@ If `$TASK_ID` is on the printed list (or independent of the listed items), proce
 
 ## Step 2 — Compute branch name
 
-The branch pattern lives in `.ai-sdlc/pipeline-backlog.yaml` under `branching.pattern`. Today it's `ai-sdlc/{issueIdLower}-{slug}` where `{slug}` is a kebab-cased version of the task title.
+The branch pattern lives in `.ai-sdlc/pipeline.yaml` under `spec.backlog.branching.pattern`
+(canonical location as of AISDLC-245.5). Today it's `ai-sdlc/{issueIdLower}-{slug}` where
+`{slug}` is a kebab-cased version of the task title. Legacy adopters still on
+`.ai-sdlc/pipeline-backlog.yaml` get a deprecation warning; migrate to `pipeline.yaml` using
+the guide at `docs/operations/pipeline-backlog-migration.md`.
 
 ```bash
-BRANCH_PATTERN=$(grep -A2 'branching:' .ai-sdlc/pipeline-backlog.yaml | grep 'pattern:' | sed -E "s/.*pattern: *'([^']+)'.*/\1/")
+# AISDLC-245.5: read from pipeline.yaml spec.backlog.branching.pattern (canonical).
+# Falls back to pipeline-backlog.yaml when pipeline.yaml lacks the backlog
+# section (one-release grace period). pipeline-cli/src/steps/02-compute-branch.ts
+# is the source-of-truth reader and emits the deprecation warning when the
+# legacy file is used; the shell pipeline below mirrors the priority order so
+# `/ai-sdlc execute` reads the same value the in-process pipeline would.
+BRANCH_PATTERN=$(grep -A4 'backlog:' .ai-sdlc/pipeline.yaml 2>/dev/null \
+    | grep -A2 'branching:' | grep 'pattern:' \
+    | sed -E "s/.*pattern: *'?([^'\"]+)'?.*/\1/" | head -1)
+if [ -z "$BRANCH_PATTERN" ] && [ -f .ai-sdlc/pipeline-backlog.yaml ]; then
+  BRANCH_PATTERN=$(grep -A2 'branching:' .ai-sdlc/pipeline-backlog.yaml \
+    | grep 'pattern:' | sed -E "s/.*pattern: *'([^']+)'.*/\1/")
+  [ -n "$BRANCH_PATTERN" ] && echo \
+    "[ai-sdlc] DEPRECATION: read branching.pattern from .ai-sdlc/pipeline-backlog.yaml. Migrate to .ai-sdlc/pipeline.yaml under spec.backlog.branching.pattern (AISDLC-245.5)." >&2
+fi
+[ -z "$BRANCH_PATTERN" ] && BRANCH_PATTERN='ai-sdlc/{issueIdLower}-{slug}'
 # AISDLC-180: use ai-sdlc-plugin/scripts/compute-slug.mjs to parse the YAML
 # frontmatter title properly. The previous shell pipeline (`grep ^title: |
 # sed`) returned `>-` literally for any block-scalar title produced by
@@ -864,7 +883,9 @@ If push fails with non-fast-forward (someone else pushed to the same branch), ab
 
 Now that the branch is on origin, open the PR **as a draft**. Opening as draft means GitHub does NOT trigger `pull_request: opened` CI workflows on every workflow that skips drafts (see `pipeline-cli/docs/aisdlc-218-workflow-changes.md` for the list of workflows that need the `ready_for_review` trigger + job-level draft guard added). CI fires only when Step 13 calls `gh pr ready`.
 
-Compose the PR title from `.ai-sdlc/pipeline-backlog.yaml` `pullRequest.titleTemplate` (today: `feat: {issueTitle} ({issueId})`).
+Compose the PR title from `.ai-sdlc/pipeline.yaml` `spec.backlog.pullRequest.titleTemplate`
+(canonical as of AISDLC-245.5; falls back to `.ai-sdlc/pipeline-backlog.yaml`
+`pullRequest.titleTemplate` with a deprecation warning — today: `feat: {issueTitle} ({issueId})`).
 
 Compose the PR body from:
 - The developer's `summary` field

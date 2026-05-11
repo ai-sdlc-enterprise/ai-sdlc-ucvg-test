@@ -2,7 +2,9 @@
  * Step 11 — Push the worktree branch and open the GitHub PR.
  *
  * Mirrors `execute-orchestrator.md` Step 11. Reads the PR title template
- * from `.ai-sdlc/pipeline-backlog.yaml` (`pullRequest.titleTemplate`),
+ * from `.ai-sdlc/pipeline.yaml` (`spec.backlog.pullRequest.titleTemplate`)
+ * with a fallback to the deprecated `.ai-sdlc/pipeline-backlog.yaml`
+ * (`pullRequest.titleTemplate`, AISDLC-245.5),
  * composes the PR body from the developer summary + changed files +
  * code reviewer summary, then runs `git push -u origin <branch>` followed
  * by `gh pr create`.
@@ -25,10 +27,16 @@
  * @module steps/11-push-and-pr
  */
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { defaultRunner, type Runner } from '../runtime/exec.js';
-import type { PushAndPrOptions, PushAndPrResult } from '../types.js';
+import {
+  DEFAULT_LOGGER,
+  type PipelineLogger,
+  type PushAndPrOptions,
+  type PushAndPrResult,
+} from '../types.js';
+import { parseLegacyKey, parsePipelineBacklogKey } from './02-compute-branch.js';
 import { lateRebase } from './11-late-rebase.js';
 
 export interface PushAndPrStepOptions extends PushAndPrOptions {
@@ -46,22 +54,42 @@ export interface PushAndPrStepOptions extends PushAndPrOptions {
 const DEFAULT_TITLE_TEMPLATE = 'feat: {issueTitle} ({issueId})';
 
 /**
- * Read `pullRequest.titleTemplate` from `.ai-sdlc/pipeline-backlog.yaml`.
- * Returns the default if the file is missing or the key isn't present.
+ * Read `pullRequest.titleTemplate` from the canonical location:
+ *   1. `.ai-sdlc/pipeline.yaml` → `spec.backlog.pullRequest.titleTemplate` (AISDLC-245.5)
+ *   2. `.ai-sdlc/pipeline-backlog.yaml` → `pullRequest.titleTemplate` (deprecated shim,
+ *      logs a warning on first use; will be removed in the next major release)
+ *
+ * Returns the default when neither file has the key.
  *
  * Exported for unit tests.
  */
-export function readTitleTemplate(workDir: string): string {
-  const path = join(workDir, '.ai-sdlc', 'pipeline-backlog.yaml');
-  if (!existsSync(path)) return DEFAULT_TITLE_TEMPLATE;
-  let raw: string;
-  try {
-    raw = readFileSync(path, 'utf8');
-  } catch {
-    return DEFAULT_TITLE_TEMPLATE;
+export function readTitleTemplate(workDir: string, logger?: PipelineLogger): string {
+  // --- 1. Canonical path: pipeline.yaml spec.backlog.pullRequest.titleTemplate ---
+  // Uses real YAML parsing (js-yaml via parsePipelineBacklogKey from step-02)
+  // so the lookup is properly section-scoped: a missing
+  // `spec.backlog.pullRequest.titleTemplate` does NOT fall through to a
+  // sibling `spec.pullRequest.titleTemplate` (AISDLC-245.5 code-reviewer
+  // round-2 MAJOR finding).
+  const pipelineYamlPath = join(workDir, '.ai-sdlc', 'pipeline.yaml');
+  if (existsSync(pipelineYamlPath)) {
+    const tpl = parsePipelineBacklogKey<string>(pipelineYamlPath, ['pullRequest', 'titleTemplate']);
+    if (typeof tpl === 'string' && tpl.length > 0) return tpl;
   }
-  const m = raw.match(/pullRequest:\s*[\r\n]+\s*titleTemplate:\s*['"]?([^'"\r\n]+)['"]?/);
-  return m ? m[1].trim() : DEFAULT_TITLE_TEMPLATE;
+
+  // --- 2. Deprecated shim: pipeline-backlog.yaml pullRequest.titleTemplate ---
+  const legacyPath = join(workDir, '.ai-sdlc', 'pipeline-backlog.yaml');
+  if (!existsSync(legacyPath)) return DEFAULT_TITLE_TEMPLATE;
+  const tpl = parseLegacyKey<string>(legacyPath, ['pullRequest', 'titleTemplate']);
+  if (typeof tpl === 'string' && tpl.length > 0) {
+    const log = logger ?? DEFAULT_LOGGER;
+    log.warn(
+      '[ai-sdlc] DEPRECATION: reading pullRequest.titleTemplate from .ai-sdlc/pipeline-backlog.yaml. ' +
+        'Migrate this setting to .ai-sdlc/pipeline.yaml under spec.backlog.pullRequest.titleTemplate. ' +
+        'pipeline-backlog.yaml will be removed in the next major release (AISDLC-245.5).',
+    );
+    return tpl;
+  }
+  return DEFAULT_TITLE_TEMPLATE;
 }
 
 /**
@@ -192,7 +220,7 @@ export async function pushAndPr(opts: PushAndPrStepOptions): Promise<PushAndPrRe
   }
 
   // 2. gh pr create
-  const titleTemplate = readTitleTemplate(opts.workDir);
+  const titleTemplate = readTitleTemplate(opts.workDir, opts.logger);
   const title = composeTitle(
     titleTemplate,
     opts.taskId,

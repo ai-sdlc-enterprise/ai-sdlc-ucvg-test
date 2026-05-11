@@ -52,14 +52,83 @@ describe('Step 2 — computeBranchName', () => {
     expect(r.worktreePath).toBe(join(tmp, '.worktrees', 'aisdlc-100'));
   });
 
-  it('reads pipeline-backlog.yaml when present', async () => {
+  it('reads pipeline.yaml spec.backlog.branching.pattern (canonical, AISDLC-245.5)', async () => {
+    mkdirSync(join(tmp, '.ai-sdlc'), { recursive: true });
+    writeFileSync(
+      join(tmp, '.ai-sdlc', 'pipeline.yaml'),
+      [
+        'apiVersion: ai-sdlc.io/v1alpha1',
+        'kind: Pipeline',
+        'metadata:',
+        '  name: test',
+        'spec:',
+        '  triggers:',
+        '    - event: issue.labeled',
+        '  providers: {}',
+        '  stages: []',
+        '  backlog:',
+        '    branching:',
+        "      pattern: 'feat/{issueIdLower}/{slug}'",
+      ].join('\n') + '\n',
+    );
+    const r = await computeBranchName({ taskId: 'AISDLC-100', task: baseTask, workDir: tmp });
+    expect(r.branch).toMatch(/^feat\/aisdlc-100\/my-heavy/);
+  });
+
+  it('reads pipeline-backlog.yaml when present (deprecated shim, warns)', async () => {
     mkdirSync(join(tmp, '.ai-sdlc'), { recursive: true });
     writeFileSync(
       join(tmp, '.ai-sdlc', 'pipeline-backlog.yaml'),
       `branching:\n  pattern: 'feat/{issueIdLower}/{slug}'\n`,
     );
-    const r = await computeBranchName({ taskId: 'AISDLC-100', task: baseTask, workDir: tmp });
+    const logger = makeRecordingLogger();
+    const r = await computeBranchName({
+      taskId: 'AISDLC-100',
+      task: baseTask,
+      workDir: tmp,
+      logger,
+    });
     expect(r.branch).toMatch(/^feat\/aisdlc-100\/my-heavy/);
+    // Deprecation warning must fire when falling back to pipeline-backlog.yaml.
+    expect(logger.warnings).toHaveLength(1);
+    expect(logger.warnings[0]).toMatch(/DEPRECATION/);
+    expect(logger.warnings[0]).toMatch(/pipeline-backlog\.yaml/);
+  });
+
+  it('prefers pipeline.yaml over pipeline-backlog.yaml (canonical wins)', async () => {
+    mkdirSync(join(tmp, '.ai-sdlc'), { recursive: true });
+    // pipeline.yaml has backlog section
+    writeFileSync(
+      join(tmp, '.ai-sdlc', 'pipeline.yaml'),
+      [
+        'apiVersion: ai-sdlc.io/v1alpha1',
+        'kind: Pipeline',
+        'metadata:',
+        '  name: test',
+        'spec:',
+        '  triggers: []',
+        '  providers: {}',
+        '  stages: []',
+        '  backlog:',
+        '    branching:',
+        "      pattern: 'canonical/{issueIdLower}'",
+      ].join('\n') + '\n',
+    );
+    // pipeline-backlog.yaml has a different pattern
+    writeFileSync(
+      join(tmp, '.ai-sdlc', 'pipeline-backlog.yaml'),
+      `branching:\n  pattern: 'legacy/{issueIdLower}'\n`,
+    );
+    const logger = makeRecordingLogger();
+    const r = await computeBranchName({
+      taskId: 'AISDLC-100',
+      task: baseTask,
+      workDir: tmp,
+      logger,
+    });
+    // canonical pipeline.yaml wins — no deprecation warning
+    expect(r.branch).toBe('canonical/aisdlc-100');
+    expect(logger.warnings).toHaveLength(0);
   });
 
   it('respects defaultPattern override', async () => {
@@ -281,16 +350,171 @@ describe('Step 2 — readBranchPattern', () => {
     expect(readBranchPattern('/no/such', 'fb')).toBe('fb');
   });
 
-  it('returns fallback when key absent', () => {
+  it('returns fallback when key absent in both files', () => {
     writeFileSync(join(tmp, '.ai-sdlc', 'pipeline-backlog.yaml'), 'branching: {}\n');
     expect(readBranchPattern(tmp, 'fb')).toBe('fb');
   });
 
-  it('handles double-quoted patterns', () => {
+  it('reads from pipeline-backlog.yaml when pipeline.yaml has no backlog section (deprecated)', () => {
     writeFileSync(
       join(tmp, '.ai-sdlc', 'pipeline-backlog.yaml'),
       `branching:\n  pattern: "test/{slug}"\n`,
     );
-    expect(readBranchPattern(tmp)).toBe('test/{slug}');
+    const logger = makeRecordingLogger();
+    expect(readBranchPattern(tmp, 'fb', logger)).toBe('test/{slug}');
+    expect(logger.warnings).toHaveLength(1);
+    expect(logger.warnings[0]).toMatch(/DEPRECATION/);
+  });
+
+  it('reads from pipeline.yaml backlog section (canonical, no warning)', () => {
+    writeFileSync(
+      join(tmp, '.ai-sdlc', 'pipeline.yaml'),
+      ['spec:', '  backlog:', '    branching:', "      pattern: 'canonical/{issueIdLower}'"].join(
+        '\n',
+      ) + '\n',
+    );
+    const logger = makeRecordingLogger();
+    expect(readBranchPattern(tmp, 'fb', logger)).toBe('canonical/{issueIdLower}');
+    expect(logger.warnings).toHaveLength(0);
+  });
+
+  it('handles double-quoted patterns in legacy pipeline-backlog.yaml', () => {
+    writeFileSync(
+      join(tmp, '.ai-sdlc', 'pipeline-backlog.yaml'),
+      `branching:\n  pattern: "test/{slug}"\n`,
+    );
+    const logger = makeRecordingLogger();
+    expect(readBranchPattern(tmp, undefined, logger)).toBe('test/{slug}');
+  });
+
+  // AISDLC-245.5 round-2 code-reviewer MINOR regression: when spec.backlog
+  // exists but lacks branching, the lookup MUST NOT fall through to a sibling
+  // spec.branching.pattern (which is a different config — backlog branching is
+  // for /ai-sdlc execute, while spec.branching could be a future workflow setting).
+  it('does NOT cross spec.backlog into a sibling top-level branching (section-scoped)', () => {
+    writeFileSync(
+      join(tmp, '.ai-sdlc', 'pipeline.yaml'),
+      [
+        'spec:',
+        '  backlog:',
+        '    pullRequest:',
+        "      titleTemplate: 'feat: {issueTitle}'",
+        '  branching:',
+        "    pattern: 'WRONG/{issueIdLower}'",
+      ].join('\n') + '\n',
+    );
+    const logger = makeRecordingLogger();
+    // backlog has no branching.pattern → MUST return fallback, NOT 'WRONG/...'
+    // from the sibling spec.branching block.
+    expect(readBranchPattern(tmp, 'fallback/{slug}', logger)).toBe('fallback/{slug}');
+    expect(logger.warnings).toHaveLength(0);
+  });
+});
+
+// AISDLC-245.5 — migration equivalence: an adopter who edits pipeline-backlog.yaml
+// today must get the IDENTICAL branch pattern after migrating that same value
+// to pipeline.yaml's spec.backlog.branching.pattern. This is the contract the
+// migration runbook (docs/operations/pipeline-backlog-migration.md) promises
+// — if it ever drifted we'd silently break adopter branches on next run.
+describe('Step 2 — migration equivalence (AISDLC-245.5)', () => {
+  const PATTERNS = [
+    'ai-sdlc/{issueIdLower}-{slug}',
+    'feat/{issueIdLower}/{slug}',
+    'custom/{issueIdLower}',
+    // Test-reviewer round-2 suggestion: include a pattern with characters that
+    // are YAML-sensitive in unquoted scalar context (the YAML reader uses
+    // single-quoted form, but some adopters write the legacy shape unquoted).
+    'release/{issueIdLower}.{slug}',
+  ];
+
+  for (const pattern of PATTERNS) {
+    it(`legacy pipeline-backlog.yaml and canonical pipeline.yaml produce same pattern: ${pattern}`, () => {
+      // Legacy shape: pipeline-backlog.yaml
+      const legacyDir = makeTmpProject();
+      try {
+        mkdirSync(join(legacyDir, '.ai-sdlc'), { recursive: true });
+        writeFileSync(
+          join(legacyDir, '.ai-sdlc', 'pipeline-backlog.yaml'),
+          `branching:\n  pattern: '${pattern}'\n`,
+        );
+        const legacyLogger = makeRecordingLogger();
+        const legacyResult = readBranchPattern(legacyDir, 'default', legacyLogger);
+
+        // Canonical shape: pipeline.yaml spec.backlog.branching.pattern
+        const canonicalDir = makeTmpProject();
+        try {
+          mkdirSync(join(canonicalDir, '.ai-sdlc'), { recursive: true });
+          writeFileSync(
+            join(canonicalDir, '.ai-sdlc', 'pipeline.yaml'),
+            [
+              'apiVersion: ai-sdlc.io/v1alpha1',
+              'kind: Pipeline',
+              'metadata:',
+              '  name: migration-test',
+              'spec:',
+              '  triggers: []',
+              '  providers: {}',
+              '  stages: []',
+              '  backlog:',
+              '    branching:',
+              `      pattern: '${pattern}'`,
+            ].join('\n') + '\n',
+          );
+          const canonicalLogger = makeRecordingLogger();
+          const canonicalResult = readBranchPattern(canonicalDir, 'default', canonicalLogger);
+
+          // Equivalence: same pattern value
+          expect(canonicalResult).toBe(legacyResult);
+          expect(canonicalResult).toBe(pattern);
+          // Canonical shape MUST NOT emit deprecation warning
+          expect(canonicalLogger.warnings).toHaveLength(0);
+          // Legacy shape MUST emit deprecation warning
+          expect(legacyLogger.warnings).toHaveLength(1);
+          expect(legacyLogger.warnings[0]).toMatch(/DEPRECATION/);
+        } finally {
+          cleanupTmpProject(canonicalDir);
+        }
+      } finally {
+        cleanupTmpProject(legacyDir);
+      }
+    });
+  }
+
+  it('end-to-end: same task + same pattern produces same branch via legacy or canonical', async () => {
+    const pattern = 'feat/{issueIdLower}/{slug}';
+
+    const legacyDir = makeTmpProject();
+    const canonicalDir = makeTmpProject();
+    try {
+      mkdirSync(join(legacyDir, '.ai-sdlc'), { recursive: true });
+      writeFileSync(
+        join(legacyDir, '.ai-sdlc', 'pipeline-backlog.yaml'),
+        `branching:\n  pattern: '${pattern}'\n`,
+      );
+      mkdirSync(join(canonicalDir, '.ai-sdlc'), { recursive: true });
+      writeFileSync(
+        join(canonicalDir, '.ai-sdlc', 'pipeline.yaml'),
+        ['spec:', '  backlog:', '    branching:', `      pattern: '${pattern}'`].join('\n') + '\n',
+      );
+
+      const legacy = await computeBranchName({
+        taskId: 'AISDLC-100',
+        task: baseTask,
+        workDir: legacyDir,
+        logger: makeRecordingLogger(),
+      });
+      const canonical = await computeBranchName({
+        taskId: 'AISDLC-100',
+        task: baseTask,
+        workDir: canonicalDir,
+        logger: makeRecordingLogger(),
+      });
+
+      expect(canonical.branch).toBe(legacy.branch);
+      expect(canonical.slug).toBe(legacy.slug);
+    } finally {
+      cleanupTmpProject(legacyDir);
+      cleanupTmpProject(canonicalDir);
+    }
   });
 });

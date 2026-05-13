@@ -34,7 +34,8 @@
     "cli-tui-corpus": "bin/cli-tui-corpus.mjs",
     "cli-capture": "bin/cli-capture.mjs",
     "cli-task-complete": "bin/cli-task-complete.mjs",
-    "cli-backlog-verify": "bin/cli-backlog-verify.mjs"
+    "cli-backlog-verify": "bin/cli-backlog-verify.mjs",
+    "cli-quality-corpus": "bin/cli-quality-corpus.mjs"
   },
   "exports": {
     ".": {

@@ -65,3 +65,52 @@ export {
   type OperatorMetrics,
   type PipelineMetrics,
 } from './metrics.js';
+
+export {
+  classifyFailure,
+  computeSeverity,
+  validateVendorNamespace,
+  ClassificationError,
+  BUILTIN_FRAMEWORK_SUBCLASSES,
+  type FailureClass,
+  type FailureSignal,
+  type FrameworkSubclass,
+  type ClassificationResult,
+  type FrameworkBugCaptureRecord,
+  type SeverityAxes,
+  type SeverityScore,
+  type CompositeSeverity,
+  type ClassificationContext,
+} from './quality-classifier.js';
+
+export {
+  appendFrameworkCapture,
+  routeFrameworkBug,
+  resolveCodeownersAssignee,
+  isQualityMonitoringEnabled,
+  type AppendCaptureOpts,
+  type RouteOpts,
+  type RouteResult,
+} from './quality-router.js';
+
+export {
+  computeQualityMetrics,
+  formatMttr,
+  formatCoverageRate,
+  type QualityMetrics,
+  type MttrEntry,
+  type RecurrenceEntry,
+  type ComputeQualityMetricsOpts,
+} from './quality-metrics.js';
+
+export {
+  shouldSampleDeterminism,
+  recordDeterminismBaseline,
+  readDeterminismBaseline,
+  checkDeterminismViolation,
+  DETERMINISM_SAMPLE_RATE,
+  DETERMINISM_DIR,
+  BASELINE_MAX_AGE_MS,
+  type DeterminismBaseline,
+  type DeterminismCheckResult,
+} from './determinism-detector.js';

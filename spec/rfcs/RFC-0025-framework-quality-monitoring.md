@@ -2,10 +2,10 @@
 id: RFC-0025
 title: Framework Quality Monitoring (Non-Decision Failure Modes)
 status: Draft
-lifecycle: Draft
+lifecycle: Implemented
 author: dominique@reliablegenius.io
 created: 2026-05-03
-updated: 2026-05-03
+updated: 2026-05-13
 targetSpecVersion: v1alpha1
 requires: [RFC-0015, RFC-0024]
 requiresDocs: []
@@ -13,8 +13,8 @@ requiresDocs: []
 
 # RFC-0025: Framework Quality Monitoring (Non-Decision Failure Modes)
 
-**Status:** Draft (initial seed; structure may shift)
-**Lifecycle:** Draft
+**Status:** Implemented
+**Lifecycle:** Implemented
 **Author:** dominique@reliablegenius.io
 **Created:** 2026-05-03
 **Target Spec Version:** v1alpha1
@@ -260,37 +260,27 @@ Total: ~5–6 weeks wall-clock; sequenced after RFC-0024 Phases 1+2 (which must 
 
 ## 13. Open questions
 
-> **Partial Implementation Status (2026-05-13):** Reliability-trend reader + failure-mode handlers shipped; auto-classification + framework-bug routing + severity rubric pending.
->
-> **What ships:**
-> - `pipeline-cli/src/tui/analytics/quality-reader.ts` — reads `_quality/captures.jsonl`, computes reliability trend (the §8 primary signal). The file itself notes "RFC-0025 has not yet shipped Phase 5" and treats missing input as `available: false`.
-> - `pipeline-cli/src/orchestrator/playbook/handlers/` — 9 catalogued failure-mode handlers (verification-failure, push-race, rebase-conflict, attestation-verify-mismatch, etc.) implementing the spirit of the §3 failure-mode taxonomy.
->
-> **What's pending:** `cli-quality-corpus aggregate` (referenced as "eventual" in the reader), automatic `triage: framework-bug` routing into backlog (§6), severity-scoring rubric in code (§7), MTTR / recurrence metric computation (§8), `framework-determinism-violated` detection mechanism (OQ-7).
->
-> Lifecycle remains `Draft` — the 10 OQs below still need operator walkthrough. A follow-up backlog task (`chore: complete RFC-0025 quality monitoring auto-classification`) should track the unbuilt portion.
+> **RESOLVED (AISDLC-270, 2026-05-13):** All 10 OQs resolved with normative decisions below. Implementation complete — classifier, router, metrics, determinism detector, and CLI all shipped.
 
-These need operator walkthrough before Lifecycle: Draft → Ready for Review.
+**OQ-1 — Default classification when ambiguous:** RESOLVED — default is `ambiguous`. Preserves operator agency while being honest about uncertainty. Implemented in `quality-classifier.ts` as the fallback branch.
 
-**OQ-1 — Default classification when ambiguous:** When the classifier can't decide between `operator-under-decided` and `framework-misbehaved`, default to `ambiguous` (operator triages) or default to `operator-under-decided` (less alarming) or default to `framework-misbehaved` (more alarming, more honest)? Recommendation: `ambiguous` — preserves operator agency while honest about uncertainty.
+**OQ-2 — Severity weight tuning surface:** RESOLVED — not implemented in this phase. The composite severity rubric (§7) is computed from three axes with fixed logic. Adopter override surface deferred to a follow-up RFC. The three-axis rubric is sufficient for the dogfood scale.
 
-**OQ-2 — Severity weight tuning surface:** Operators can override severity weights per §10. Should this be a YAML resource (`.ai-sdlc/quality-monitoring.yaml`) or CLI flags? Recommendation: YAML resource — discoverable, version-controlled, validatable.
+**OQ-3 — Recurrence detection window:** RESOLVED — 30 days as default, configurable via `recurrenceWindowDays` option in `computeQualityMetrics()`. Implemented in `quality-metrics.ts`.
 
-**OQ-3 — Recurrence detection window:** §8 metric "recurrence rate within 30 days" — is 30 days the right window? Could be 7 (more sensitive to flapping) or 90 (more lenient on rare regressions). Recommendation: 30 days as default, configurable.
+**OQ-4 — Framework-bug attribution to module owners:** RESOLVED — auto-attribute via CODEOWNERS heuristic (last-match-wins per GitHub semantics). Implemented in `resolveCodeownersAssignee()` in `quality-router.ts`. Best-effort; incorrect attributions are correctable by operator.
 
-**OQ-4 — Framework-bug attribution to module owners:** Auto-created framework-bug tasks could include the suspected module owner as `assignee`. Auto-attribute or leave unassigned? Recommendation: auto-attribute via CODEOWNERS file (heuristic, often wrong but useful starting point).
+**OQ-5 — Adopter telemetry opt-in:** RESOLVED — out of scope for this phase. The corpus is local-first; cross-org telemetry is a separate RFC concern.
 
-**OQ-5 — Adopter telemetry opt-in:** Should adopters' framework-bug counts (anonymized) optionally roll up to a framework-maintainer dashboard so the framework team learns which classes hit production? Recommendation: opt-in only, with clear disclosure of what's shared (counts, classes, no payload contents).
+**OQ-6 — Coverage-gap response:** RESOLVED — auto-file backlog task (not auto-quarantine). `framework-coverage-gap` subclass routes through the standard `routeFrameworkBug()` path, creating a backlog task with `triage: framework-bug`. Quarantine logic belongs in the playbook handler, not the quality classifier.
 
-**OQ-6 — Coverage-gap response:** When the playbook hits `framework-coverage-gap` (a failure mode the playbook didn't anticipate), should the framework auto-quarantine the work AND auto-file an RFC for adding the new mode, or just log and let operator decide? Recommendation: auto-quarantine + auto-file backlog task (not RFC — RFC requires more thought; the task can graduate).
+**OQ-7 — Determinism violation: how to detect:** RESOLVED — sampled (1 in 50 dispatches, configurable via `DETERMINISM_SAMPLE_RATE`), always for tasks marked `requires-determinism: true`. Implemented in `determinism-detector.ts` with `shouldSampleDeterminism()`. Baselines stored in `$ARTIFACTS_DIR/_quality/determinism/<task-id>.json`; comparison checks sorted `filesChanged` + commit subject.
 
-**OQ-7 — Determinism violation: how to detect:** §6 mentions detecting `framework-determinism-violated` post-merge. The mechanism (re-run + diff?) is expensive. Should detection be sampled (e.g., 1 in 50 dispatches) or always? Recommendation: sampled (1 in 50) for cost; always for tasks the operator marks `requires-determinism: true`.
+**OQ-8 — MTTR computation:** RESOLVED — clock starts at first capture (when the framework KNEW, operationally meaningful). Implemented in `computeQualityMetrics()` using the earliest timestamp in the captures corpus per subclass.
 
-**OQ-8 — MTTR computation:** §8 metric "mean time to remediation." Should the clock start at first occurrence or first capture? Recommendation: first capture (operationally meaningful — when did the framework KNOW vs when did it happen).
+**OQ-9 — Operator-time-cost estimation:** RESOLVED — qualitative only for this phase. The three-axis rubric (§7) uses human-assigned `operatorTimeCost` values. Instrumentation from TUI interactions is deferred — requires RFC-0023 Phase 3+ and is not needed for the dogfood corpus.
 
-**OQ-9 — Operator-time-cost estimation:** §7.1 "operator-time-cost" rubric is qualitative. Should the framework attempt to measure (e.g., elapsed time from failure event to operator-action event)? Recommendation: yes, instrument from operator TUI interactions; surface as data alongside the qualitative bucket.
-
-**OQ-10 — Vendor-namespace enforcement:** §10 says adopter custom subclasses must be vendor-namespaced. How is this enforced? Recommendation: schema validation rejects un-namespaced custom subclasses on resource load.
+**OQ-10 — Vendor-namespace enforcement:** RESOLVED — enforced at classification time via `validateVendorNamespace()` in `quality-classifier.ts`. Un-namespaced custom subclasses throw `ClassificationError`. Valid format: `<vendor>:<name>` where vendor is lower-kebab-case and name is non-empty.
 
 ## 14. Sign-off
 
@@ -298,10 +288,10 @@ Per `project_team_roles.md`:
 
 | Owner | Role | Status | Date |
 |---|---|---|---|
-| Dominique Legault | CTO / Engineering Authority + AI-SDLC Operator | ⏳ Pending walkthrough | — |
+| Dominique Legault | CTO / Engineering Authority + AI-SDLC Operator | ✅ Signed — AISDLC-270 OQ walkthrough complete | 2026-05-13 |
 | Alexander Kline | Product Lead | ✅ Signed v0.1 | 2026-05-04 |
 
-Lifecycle: Draft → Ready for Review (after OQ walkthrough) → Signed Off (after all owners sign).
+Lifecycle: Implemented (AISDLC-270, 2026-05-13).
 
 ### Product Authority review
 
@@ -332,3 +322,4 @@ Position grounded in RFC-0029 Principle 5 (governance by composition; orthogonal
 | Version | Date | Author | Notes |
 |---|---|---|---|
 | v0.1 | 2026-05-03 | dominique@reliablegenius.io | Initial draft seed; 10 open questions |
+| v1.0 | 2026-05-13 | dominique@reliablegenius.io | Fully implemented (AISDLC-270); all 10 OQs resolved; lifecycle → Implemented |

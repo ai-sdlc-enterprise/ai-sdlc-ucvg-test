@@ -13,7 +13,7 @@ dependencies:
   - AISDLC-285
 references:
   - spec/rfcs/RFC-0035-decision-catalog-operator-routing.md
-  - spec/rfcs/RFC-0011-issue-readiness-and-active-task-substrate.md
+  - spec/rfcs/RFC-0011-definition-of-ready-gate.md
 priority: high
 ---
 

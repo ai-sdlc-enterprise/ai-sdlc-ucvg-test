@@ -11,7 +11,7 @@ labels:
   - critical
 dependencies: []
 references:
-  - spec/rfcs/RFC-0011-issue-readiness-and-active-task-substrate.md
+  - spec/rfcs/RFC-0011-definition-of-ready-gate.md
   - spec/rfcs/RFC-0024-emergent-issue-capture-and-triage.md
 priority: critical
 ---

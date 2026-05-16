@@ -13,7 +13,7 @@ dependencies:
   - AISDLC-285
 references:
   - spec/rfcs/RFC-0035-decision-catalog-operator-routing.md
-  - spec/rfcs/RFC-0014-dependency-graph-and-effective-priority.md
+  - spec/rfcs/RFC-0014-dependency-graph-composition.md
 priority: high
 ---
 

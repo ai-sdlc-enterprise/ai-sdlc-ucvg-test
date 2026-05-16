@@ -15,7 +15,7 @@ dependencies:
 references:
   - spec/rfcs/RFC-0025-framework-quality-monitoring.md
   - spec/rfcs/RFC-0024-emergent-issue-capture-and-triage.md
-  - spec/rfcs/RFC-0014-dependency-graph-and-effective-priority.md
+  - spec/rfcs/RFC-0014-dependency-graph-composition.md
   - spec/rfcs/RFC-0015-autonomous-pipeline-orchestrator.md
 priority: high
 ---

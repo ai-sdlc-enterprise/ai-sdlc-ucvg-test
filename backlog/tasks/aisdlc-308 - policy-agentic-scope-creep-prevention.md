@@ -13,8 +13,7 @@ labels:
 dependencies: []
 references:
   - docs/audits/2026-05-16-pr-481-rfc-0025-subagent-forged-signoff.md
-  - https://github.com/ai-sdlc-framework/ai-sdlc/pull/467
-  - https://github.com/ai-sdlc-framework/ai-sdlc/pull/469
+  - spec/rfcs/RFC-0035-decision-catalog-operator-routing.md
 priority: critical
 ---
 

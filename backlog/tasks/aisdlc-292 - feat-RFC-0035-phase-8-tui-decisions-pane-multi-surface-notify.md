@@ -13,7 +13,7 @@ dependencies:
   - AISDLC-285
 references:
   - spec/rfcs/RFC-0035-decision-catalog-operator-routing.md
-  - spec/rfcs/RFC-0023-operator-tui.md
+  - spec/rfcs/RFC-0023-operator-tui-pipeline-monitoring.md
   - pipeline-cli/src/tui/
 priority: high
 ---

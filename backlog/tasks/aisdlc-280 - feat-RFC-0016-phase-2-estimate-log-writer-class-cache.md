@@ -13,7 +13,7 @@ dependencies:
   - AISDLC-279
 references:
   - spec/rfcs/RFC-0016-estimation-calibration-tshirt-sizes.md
-  - spec/rfcs/RFC-0015-autonomous-orchestrator.md
+  - spec/rfcs/RFC-0015-autonomous-pipeline-orchestrator.md
 priority: high
 ---
 

@@ -13,7 +13,7 @@ dependencies:
   - AISDLC-286
 references:
   - spec/rfcs/RFC-0035-decision-catalog-operator-routing.md
-  - spec/rfcs/RFC-0029-roles-and-pillars.md
+  - spec/rfcs/RFC-0029-product-pillar-architectural-vision.md
 priority: high
 ---
 

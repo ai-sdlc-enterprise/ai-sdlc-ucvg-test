@@ -12,7 +12,7 @@ dependencies:
   - AISDLC-290
 references:
   - spec/rfcs/RFC-0035-decision-catalog-operator-routing.md
-  - spec/rfcs/RFC-0010-subscription-scheduling.md
+  - spec/rfcs/RFC-0010-parallel-execution-worktree-pooling.md
 priority: medium
 ---
 

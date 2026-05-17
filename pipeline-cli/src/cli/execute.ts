@@ -91,6 +91,7 @@ import { validateTask } from '../steps/01-validate.js';
 import { defaultSpawner } from '../runtime/default-spawner.js';
 import { MockSpawner } from '../runtime/subagent-spawner.js';
 import { ClaudeCliInlineSpawner } from '../runtime/spawners/claude-cli-inline.js';
+import { ShellClaudePSpawner } from '../runtime/shell-claude-p-spawner.js';
 import {
   CodexHarnessAdapter,
   subprocessCodexSpawnAgent,
@@ -110,12 +111,13 @@ import {
 } from '../types.js';
 
 /** Spawner identifiers accepted by `--spawner`. */
-export type SpawnerKind = 'mock' | 'api-key' | 'claude-cli' | 'codex';
+export type SpawnerKind = 'mock' | 'api-key' | 'claude-cli' | 'claude' | 'codex';
 
 export const SPAWNER_KINDS: readonly SpawnerKind[] = [
   'mock',
   'api-key',
   'claude-cli',
+  'claude',
   'codex',
 ] as const;
 
@@ -226,6 +228,16 @@ export async function resolveSpawner(kind: SpawnerKind): Promise<SubagentSpawner
       // (e.g. the orchestrator loop) should construct `ClaudeCliInlineSpawner`
       // directly with `{ taskId }` rather than going through this factory.
       return new ClaudeCliInlineSpawner();
+    case 'claude':
+      // AISDLC-349: real `claude -p` shell-out spawner. Use this from a
+      // shell-driven `cli-orchestrator tick` (cron/daemon/sidecar context)
+      // where there is no Claude Code slash command body to read the
+      // `claude-cli` manifest. Uses the operator's logged-in subscription
+      // auth — no API tokens consumed; cost lands on the same Claude Code
+      // Max plan that backs `/ai-sdlc execute`. Same `ShellClaudePSpawner`
+      // implementation that `executePipeline()` falls back to in Tier 2
+      // (RFC-0012 §8.2).
+      return new ShellClaudePSpawner();
     case 'codex': {
       // AISDLC-202.2 — Phase 2 of the Codex execution path. The
       // `CodexHarnessAdapter` is callback-driven (host-agnostic); the CLI
@@ -450,7 +462,8 @@ export async function runExecuteCommand(
     if (opts.spawnerKind === 'mock') {
       return {
         ok: false,
-        reason: '`--resume-from-draft` requires a real spawner (--spawner api-key or claude-cli).',
+        reason:
+          '`--resume-from-draft` requires a real spawner (--spawner api-key, claude, or claude-cli).',
       };
     }
     let spawner: SubagentSpawner;
@@ -481,7 +494,7 @@ export async function runExecuteCommand(
     if (opts.spawnerKind === 'mock') {
       return {
         ok: false,
-        reason: '`--rework-pr` requires a real spawner (--spawner api-key or claude-cli).',
+        reason: '`--rework-pr` requires a real spawner (--spawner api-key, claude, or claude-cli).',
       };
     }
     let spawner: SubagentSpawner;
@@ -725,7 +738,7 @@ export function executeCommand(): CommandModule {
         })
         .option('spawner', {
           describe:
-            'SubagentSpawner: mock (default; dry-run plumbing only) | api-key (paid Anthropic API) | claude-cli (inline manifest mode, AISDLC-198) | codex (Codex CLI host-bridge dispatch via CodexHarnessAdapter, AISDLC-202.2; requires CODEX_SPAWN_AGENT_BIN). See pipeline-cli/README.md.',
+            'SubagentSpawner: mock (default; dry-run plumbing only) | api-key (paid Anthropic API) | claude-cli (inline manifest mode for slash command body, AISDLC-198) | claude (real `claude -p` shell-out for cron/daemon tick, AISDLC-349) | codex (Codex CLI host-bridge dispatch via CodexHarnessAdapter, AISDLC-202.2; requires CODEX_SPAWN_AGENT_BIN). See pipeline-cli/README.md.',
           type: 'string',
           choices: SPAWNER_KINDS as unknown as string[],
           default: 'mock' as SpawnerKind,

@@ -143,6 +143,43 @@ describe('resolveSpawner', () => {
     }
   });
 
+  it('returns a ShellClaudePSpawner when kind=claude (AISDLC-349)', async () => {
+    // AISDLC-349: the `claude` spawner actually shells out to `claude -p`,
+    // unlike `claude-cli` which only emits a dispatch manifest. Use this
+    // from a shell-driven `cli-orchestrator tick` (cron/daemon/sidecar)
+    // where no slash command body is around to read the manifest.
+    const spawner = await resolveSpawner('claude');
+    expect(typeof spawner.spawn).toBe('function');
+    expect(typeof spawner.spawnParallel).toBe('function');
+    // Public-API check: buildArgv() returns the actual `claude -p` argv +
+    // resolves the per-role model. security-reviewer must pin to opus.
+    const argv = (
+      spawner as unknown as {
+        buildArgv: (opts: { type: string; prompt: string; cwd: string }) => string[];
+      }
+    ).buildArgv({ type: 'security-reviewer', prompt: 'noop', cwd: '/tmp' });
+    expect(argv).toContain('--print');
+    expect(argv).toContain('--output-format');
+    expect(argv).toContain('--agent');
+    expect(argv).toContain('security-reviewer');
+    // AISDLC-349 inline code-review MAJOR fix: per-role model split enforced
+    // at the spawner level via --model flag (agent files have model:inherit,
+    // so without --model the role would inherit session default).
+    expect(argv).toContain('--model');
+    expect(argv).toContain('claude-opus-4-6');
+  });
+
+  it('per-role model split: developer uses sonnet via --spawner claude (AISDLC-349)', async () => {
+    const spawner = await resolveSpawner('claude');
+    const argv = (
+      spawner as unknown as {
+        buildArgv: (opts: { type: string; prompt: string; cwd: string }) => string[];
+      }
+    ).buildArgv({ type: 'developer', prompt: 'noop', cwd: '/tmp' });
+    expect(argv).toContain('--model');
+    expect(argv).toContain('claude-sonnet-4-6');
+  });
+
   it('returns a CodexHarnessAdapter when kind=codex and CODEX_SPAWN_AGENT_BIN is set (AISDLC-202.2)', async () => {
     const saved = process.env.CODEX_SPAWN_AGENT_BIN;
     process.env.CODEX_SPAWN_AGENT_BIN = '/tmp/fake-codex-bridge';

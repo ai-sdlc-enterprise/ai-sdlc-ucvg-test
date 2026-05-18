@@ -5,7 +5,7 @@ status: Draft
 lifecycle: Ready for Review
 author: dominique@reliablegenius.io
 created: 2026-05-13
-updated: 2026-05-16
+updated: 2026-05-18
 targetSpecVersion: v1alpha1
 requires: [RFC-0010, RFC-0011, RFC-0024, RFC-0025, RFC-0035]
 # Adopter-facing positioning + tooling RFC. Tutorial + getting-started surfaces
@@ -27,7 +27,7 @@ requiresDocs: []
 ## Sign-Off
 
 - [ ] Engineering owner — dominique@reliablegenius.io
-- [ ] Product owner — Alexander Kline
+- [x] Product owner — Alexander Kline *(OQ-9 positioning resolution signed off: "Decision Engine" primary, "spec-driven AI workflows" secondary — 2026-05-18)*
 - [ ] Operator owner — dominique@reliablegenius.io
 
 ## Table of Contents

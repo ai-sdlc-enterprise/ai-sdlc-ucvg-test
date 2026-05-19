@@ -2,7 +2,7 @@
 
 # AI-SDLC Framework
 
-**The Decision Engine for autonomous software development**
+**The Decision Engine for spec-driven AI workflows**
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![CI](https://github.com/ai-sdlc-framework/ai-sdlc/actions/workflows/ci.yml/badge.svg)](https://github.com/ai-sdlc-framework/ai-sdlc/actions/workflows/ci.yml)
@@ -19,11 +19,13 @@
 
 ## What this is
 
-AI-SDLC turns software development into a series of well-framed decisions that the framework executes deterministically. Operators frontload the load-bearing decisions through a Definition-of-Ready gate; an autonomous orchestrator dispatches developer subagents through the dependency graph; cross-harness reviewers (Claude × Codex × …) verify the work in parallel; DSSE attestations seal every change; pull requests open themselves.
+AI-SDLC is the **Decision Engine** for spec-driven AI workflows — the execution-and-governance half of a spec-driven development stack. Operators frontload the load-bearing decisions through a Definition-of-Ready gate; an autonomous orchestrator dispatches developer subagents through the dependency graph; cross-harness reviewers (Claude × Codex × …) verify the work in parallel; DSSE attestations seal every change; pull requests open themselves.
 
 The leverage move is **cost asymmetry**: operator decisions made upfront — with full context, time to think, and access to stakeholders — are cheap and (mostly) correct. AI decisions made mid-execution under uncertainty are expensive and often wrong. The framework's value is not "AI writes code"; it's **"AI executes well-specified contracts deterministically."** Those are different products with different reliability profiles.
 
 The operator's role shifts to **decision steward** — frame open questions, resolve them, sign off on resolutions, monitor the pipeline. Typing and rubber-stamping go to the framework.
+
+AI-SDLC covers the **contract → shipped** half of the spec-driven funnel. Front-of-funnel tools like [GitHub Spec Kit](https://github.com/github/spec-kit) cover **idea → contract**; the two systems compose at the seam where a spec artifact becomes a backlog task ready for DoR. See [RFC-0036](spec/rfcs/RFC-0036-spec-kit-bridge-adopter-authoring.md) for the bridge design and adopter authoring model.
 
 > **Read first:** [`VISION.md`](VISION.md) is the organizing thesis — the design philosophy that grounds every RFC, every CLI, every gate. If something in this repo doesn't trace back to one of its principles, that's a signal we've drifted.
 

@@ -11,6 +11,8 @@ labels:
   - superseded
 dispatchable: false
 dispatchableReason: 'Superseded by Refit chain AISDLC-302..307. The original implementation attempt (PR #481) was closed on 2026-05-16 after the operator audit found 8/10 OQs decided by the dev subagent diverged from operator-affirmed resolutions + the subagent had forged the operator sign-off on RFC-0025 §14. See `docs/audits/2026-05-16-pr-481-rfc-0025-subagent-forged-signoff.md`. Re-implementation work lives in the AISDLC-302..307 Refit chain (substrate cleanup + cherry-pick from closed PR #481 → per-OQ phases against operator-affirmed §13 / §13.1).'
+blocked:
+  reason: "RFC-0025 had 10 unresolved OQs (§13) at the time this task was filed (2026-05-13). Operator OQ walkthrough completed 2026-05-15 — all 10 OQs resolved with normative answers (see RFC-0025 §13). RFC-0025 lifecycle is currently 'Ready for Review' (not yet Signed Off). This task is also superseded by the AISDLC-302..307 Refit chain (see dispatchableReason); the block remains for audit-trail completeness. Block lifts when RFC-0025 lifecycle reaches Signed Off AND the Refit chain is fully implemented."
 dependencies: []
 references:
   - spec/rfcs/RFC-0025-framework-quality-monitoring.md
@@ -27,7 +29,7 @@ priority: medium
 
 1. PR #481 (the original implementation attempt) was closed on 2026-05-16. See [`docs/audits/2026-05-16-pr-481-rfc-0025-subagent-forged-signoff.md`](../../docs/audits/2026-05-16-pr-481-rfc-0025-subagent-forged-signoff.md) for the full audit.
 2. The 2026-05-15 operator OQ walkthrough produced normative resolutions for all 10 RFC-0025 §13 OQs that **diverge from PR #481's subagent-decided implementations** (8/10 diverged or were skipped; 2/10 matched).
-3. The new design substrate is RFC-0025 §13 (operator-affirmed resolutions) + §13.1 (consolidated `.ai-sdlc/quality-monitoring.yaml` per-org config schema). Implementation against the new design is broken into 6 phases:
+3. The new design substrate is RFC-0025 §13 (operator-affirmed resolutions) + §13.1 (consolidated ".ai-sdlc/quality-monitoring.yaml" per-org config schema, to be created by AISDLC-305). Implementation against the new design is broken into 6 phases:
    - **AISDLC-302** — Substrate cleanup + salvage from closed PR #481 (~30-40% of code cherry-picks)
    - **AISDLC-303** — Confidence-bucketed classifier (OQ-1)
    - **AISDLC-304** — Multi-window recurrence + first-capture MTTR (OQ-3 + OQ-8)

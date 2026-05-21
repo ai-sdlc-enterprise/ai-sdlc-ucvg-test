@@ -31868,6 +31868,9 @@ import process3 from "node:process";
 import { existsSync as existsSync49, readdirSync as readdirSync20, readFileSync as readFileSync46 } from "node:fs";
 import { join as join50 } from "node:path";
 
+// ../../pipeline-cli/dist/dispatch/claude-p-resume.js
+import { randomUUID as randomUUID2 } from "node:crypto";
+
 // src/tools/pipeline-tools.ts
 var defaultStepRunners = {
   sweepMergedWorktrees,

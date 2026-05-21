@@ -7,6 +7,11 @@
  *   - Heartbeat read/write + stale-heartbeat sweep.
  *   - Backpressure peek for the Conductor's emit decision.
  *
+ * Phase 1.5 (AISDLC-377.2) layers on top:
+ *   - Resume-signal write/read/remove + iteration-budget probe + iteration-
+ *     exhausted diagnostic.
+ *   - `claude-p-resume` argv builders + session-id capture (Phase 2 primitives).
+ *
  * Phase 2 (AISDLC-377.3) layers on top:
  *   - The Worker Supervisor — `runSupervisorTick` polling daemon body +
  *     PID-file lock helpers.
@@ -20,13 +25,20 @@ export {
   DEFAULT_BOARD_DIR,
   DEFAULT_HEARTBEAT_STALE_MS,
   ensureBoardDirs,
+  listResumeSignals,
   peekQueue,
+  probeIterationBudget,
   readHeartbeat,
+  readResumeSignal,
   releaseInflight,
+  removeResumeSignal,
   removeVerdict,
   sweepStaleHeartbeats,
+  writeDiagnostic,
   writeHeartbeat,
+  writeIterationExhaustedDiagnostic,
   writeManifest,
+  writeResumeSignal,
   writeVerdict,
   _setMtimeForTest,
 } from './board.js';
@@ -79,6 +91,17 @@ export {
 
 export type { DispatchConfigSnapshot, RecommendWorkerInput } from './recommend-worker.js';
 
+export { BOARD_SUBDIRS, DEFAULT_ITERATION_BUDGET } from './types.js';
+
+export {
+  buildClaudePInitialArgv,
+  buildClaudePResumeArgv,
+  DEFAULT_RESUME_AGENT,
+  extractSessionIdFromClaudeOutput,
+  type BuildClaudePInitialArgvOpts,
+  type BuildClaudePResumeArgvOpts,
+} from './claude-p-resume.js';
+
 export type {
   BoardSubdir,
   ClaimResult,
@@ -87,6 +110,7 @@ export type {
   InflightHeartbeat,
   ManifestWorkerKind,
   QueueCounts,
+  ResumeSignal,
   SweepResult,
   VerdictOutcome,
   VerificationStatus,

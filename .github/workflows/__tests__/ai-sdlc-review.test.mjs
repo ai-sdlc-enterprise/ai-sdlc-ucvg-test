@@ -343,19 +343,17 @@ describe('AISDLC-193: verify-attestation.yml posts ai-sdlc/attestation as requir
     );
   });
 
-  it('verify-attestation.yml retains merge_group trigger (AISDLC-113 queue-time re-verification)', () => {
-    // Critical for sibling-rebase scenarios: the queue rebases the PR onto a
-    // fresh tip, content-bound attestation may invalidate. merge_group event
-    // fires verification against the queue tip, surfacing rebase-invalidations
-    // as a blocking status before merge happens.
+  it('verify-attestation.yml does NOT trigger on merge_group (AISDLC-400: queue dropped)', () => {
+    // Merge queue removed by AISDLC-400 — merge_group event never fires now.
+    // AISDLC-398 content-addressed envelopes survive any rebase, so queue-time
+    // re-verification is no longer needed. If queue is ever re-enabled, this
+    // trigger must be re-added AND content-hash recompute revalidated.
     const verifyPath = resolve(__dirname, '..', 'verify-attestation.yml');
     const verify = loadYaml(verifyPath);
-    // YAML 1.2 quirk: `on` parses to boolean true unless quoted; safe_load may
-    // expose under different keys. Try both.
     const triggers = verify.on || verify[true] || {};
     assert.ok(
-      'merge_group' in triggers,
-      'verify-attestation.yml must trigger on merge_group for queue-time re-verification',
+      !('merge_group' in triggers),
+      'verify-attestation.yml must NOT trigger on merge_group post-AISDLC-400 (queue dropped)',
     );
   });
 });
@@ -473,11 +471,13 @@ describe('AISDLC-214: docs-only short-circuit eliminates fallback workflow race 
 
   // AC-2: ai-sdlc-review.yml short-circuits on docs-only merge_group commits
   describe('ai-sdlc-review.yml docs-only short-circuit (AC-2)', () => {
-    it('ai-sdlc-review.yml now triggers on merge_group', () => {
+    it('ai-sdlc-review.yml does NOT trigger on merge_group (AISDLC-400: queue dropped)', () => {
+      // Merge queue removed by AISDLC-400 — merge_group event never fires.
+      // Docs-only short-circuit is now handled via pull_request paths-ignore.
       const triggers = reviewWorkflow.on || reviewWorkflow[true] || {};
       assert.ok(
-        'merge_group' in triggers,
-        'ai-sdlc-review.yml must now trigger on merge_group for docs-only queue commits (AISDLC-214)',
+        !('merge_group' in triggers),
+        'ai-sdlc-review.yml must NOT trigger on merge_group post-AISDLC-400 (queue dropped)',
       );
     });
 

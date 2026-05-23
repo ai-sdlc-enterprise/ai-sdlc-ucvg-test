@@ -118,8 +118,8 @@ jobs:
               # force-push. Skips PRs that never had auto-merge, so we don't
               # accidentally enable it. Closes AISDLC-211 root cause #4.
               if [ "$WAS_ARMED" = "true" ]; then
-                echo "  Re-arming auto-merge (cleared by force-push) with --auto --rebase"
-                if gh pr merge "$PR" --repo "$REPO" --auto --rebase 2>&1; then
+                echo "  Re-arming auto-merge (cleared by force-push) with --auto --squash (AISDLC-400)"
+                if gh pr merge "$PR" --repo "$REPO" --auto --squash 2>&1; then
                   REARMED=$((REARMED + 1))
                   echo "  auto-merge re-armed successfully"
                 else

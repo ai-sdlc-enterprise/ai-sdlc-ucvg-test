@@ -139,7 +139,7 @@ jobs:
     # the merge queue.
     # AISDLC-381: include `pull_request_target` in the PR-event match (we
     # migrated the trigger so this is the PR-event channel now).
-    if: github.event_name == 'merge_group' || github.event.pull_request.draft == false
+    if: github.event.pull_request != null && github.event.pull_request.draft == false
     permissions:
       contents: read
       statuses: write

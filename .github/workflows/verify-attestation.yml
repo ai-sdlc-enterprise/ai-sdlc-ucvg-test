@@ -152,7 +152,7 @@ jobs:
     # silently allowed drafts through under pull_request_target because the
     # event_name no longer matches the first disjunct.
     if: >-
-      github.event_name == 'merge_group' || github.event.pull_request.draft == false
+      github.event.pull_request != null && github.event.pull_request.draft == false
     permissions:
       contents: read
       statuses: write

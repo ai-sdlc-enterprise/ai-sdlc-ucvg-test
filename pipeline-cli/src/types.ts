@@ -108,6 +108,47 @@ export interface PipelineOptions {
    * exposes for `cli-dor-check`.
    */
   taskFilePathOverride?: string;
+  /**
+   * AISDLC-393 — inline `TaskSpec` used to bypass Step 1's `findTaskFile`
+   * lookup. When provided, the pipeline treats this spec as the source of
+   * truth and skips reading any backlog task file. Combined with
+   * `sourceKind: 'gh-issue'`, this is how `/ai-sdlc execute <issue-number>`
+   * routes a GitHub issue through `executePipeline()` without materialising
+   * a backlog file.
+   *
+   * The spec's `id` is used as the canonical task ID; callers MUST also pass
+   * the same value in `taskId` so downstream branching (worktree path,
+   * sentinel content, prompt rendering) stays consistent.
+   *
+   * When omitted, Step 1 falls through to the legacy `findTaskFile` path —
+   * the backlog-task source-of-truth flow is unchanged (no regression).
+   */
+  taskSpec?: TaskSpec;
+  /**
+   * AISDLC-393 — discriminates which "source of truth" the pipeline is
+   * running against:
+   *   - `'backlog'` (default): backlog task file in `backlog/tasks/<id>-*.md`
+   *     is the source. Step 4 patches its frontmatter to In Progress; Step
+   *     10 moves it to `backlog/completed/` and re-patches to Done.
+   *   - `'gh-issue'`: a GitHub issue is the source (no backlog file
+   *     exists). Step 4 skips the frontmatter patch (sentinel still written
+   *     — the PreToolUse hook needs it). Step 10 skips the file-move + the
+   *     re-patch + the `task_complete` MCP call (verdict file is still
+   *     written so the signing path works). Step 11 formats the PR title +
+   *     body to include `(closes #N)` / `Closes #N` so the issue auto-closes
+   *     on merge.
+   *
+   * Defaults to `'backlog'` (backward-compatible) when omitted.
+   */
+  sourceKind?: 'backlog' | 'gh-issue';
+  /**
+   * AISDLC-393 — GitHub issue number, REQUIRED when `sourceKind === 'gh-issue'`.
+   * Used by Step 11 to format the PR title `... (closes #N)` and append
+   * `Closes #N` to the PR body so the issue auto-closes on merge.
+   *
+   * Ignored for `sourceKind === 'backlog'`.
+   */
+  issueNumber?: number;
 }
 
 /**
@@ -257,6 +298,18 @@ export interface BeginTaskResult {
   taskId: string;
   worktreePath: string;
   sentinelPath: string;
+  /**
+   * AISDLC-393 (round 2, AC-2 fix) — absolute path to the synthetic task
+   * file Step 4 materialised for the gh-issue path so the PreToolUse hook
+   * can resolve `permittedExternalPaths`. Present ONLY when ALL of:
+   *   - `sourceKind === 'gh-issue'`
+   *   - `opts.taskSpec` was provided
+   *   - `opts.taskSpec.permittedExternalPaths` is a non-empty array
+   *
+   * Step 13 cleanup removes this file (re-deriving the path via
+   * `syntheticTaskFilePath`) before push, so it never lands in a commit.
+   */
+  syntheticTaskFile?: string;
 }
 
 // ── Step 5 — Build developer prompt ──────────────────────────────────
@@ -431,6 +484,19 @@ export interface PushAndPrOptions {
   needsHumanAttention?: boolean;
   /** Optional logger; defaults to console. AISDLC-245.5 — used to surface deprecation warnings. */
   logger?: PipelineLogger;
+  /**
+   * AISDLC-393 — when `'gh-issue'`, format the PR title to include
+   * `(closes #N)` and prepend `Closes #${issueNumber}` to the PR body so
+   * GitHub auto-closes the issue on merge. The footer's `References <taskId>`
+   * line is replaced with the `Closes #N` reference (the synthetic
+   * `gh-issue-N` task ID is not meaningful outside the pipeline).
+   */
+  sourceKind?: 'backlog' | 'gh-issue';
+  /**
+   * AISDLC-393 — GitHub issue number. REQUIRED when `sourceKind === 'gh-issue'`.
+   * Used to format `(closes #N)` in the title and `Closes #N` in the body.
+   */
+  issueNumber?: number;
 }
 
 export interface PushAndPrResult {
@@ -471,10 +537,31 @@ export interface SiblingPrResult {
 export interface CleanupOptions {
   taskId: string;
   worktreePath: string;
+  /**
+   * AISDLC-393 (round 2, AC-2 fix) — absolute path to the synthetic gh-issue
+   * task file Step 4 materialised. When provided, Step 13 removes it
+   * (idempotent). When undefined but `taskSpec.permittedExternalPaths` is
+   * non-empty, Step 13 re-derives the path via `syntheticTaskFilePath()`.
+   * Pass undefined for the backlog path (no synthetic file is ever created).
+   */
+  syntheticTaskFile?: string;
+  /**
+   * AISDLC-393 (round 2, AC-2 fix) — inline `TaskSpec`, used as a fallback
+   * source-of-truth for the synthetic file's location when
+   * `syntheticTaskFile` was not threaded through. Optional.
+   */
+  taskSpec?: TaskSpec;
 }
 
 export interface CleanupResult {
   sentinelRemoved: boolean;
+  /**
+   * AISDLC-393 (round 2, AC-2 fix) — true iff a synthetic gh-issue task
+   * file existed AND was successfully removed. False on the backlog path
+   * (no synthetic file), false when no file was found, false when
+   * removal threw.
+   */
+  syntheticTaskFileRemoved: boolean;
 }
 
 // ── SubagentSpawner abstraction (RFC-0012 §8) ────────────────────────

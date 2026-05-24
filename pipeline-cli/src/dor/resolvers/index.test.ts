@@ -26,13 +26,27 @@ describe('extractReferences', () => {
     expect(raws).toContain('https://example.com/b');
   });
 
-  it('extracts gh issue refs (#NN, gh#NN, owner/repo#NN)', () => {
-    const body = 'fixes #42 and gh#43 and ai-sdlc-framework/ai-sdlc#44';
+  it('extracts gh issue refs from intentional citations (closes/fixes/resolves verbs, gh#, owner/repo#)', () => {
+    const body =
+      'fixes #42 and gh#43 and ai-sdlc-framework/ai-sdlc#44 and Closes #45 and resolves #46';
     const refs = extractReferences(body);
     const raws = refs.map((r) => r.raw);
     expect(raws).toContain('#42');
+    expect(raws).toContain('#45');
+    expect(raws).toContain('#46');
     expect(raws).toContain('gh#43');
     expect(raws).toContain('ai-sdlc-framework/ai-sdlc#44');
+  });
+
+  it('does NOT extract bare #NN from narrative prose (narrowed 2026-05-23)', () => {
+    // Bare `#NN` citations in narrative are not references the gate validates
+    // — only `closes/fixes/resolves #NN`, `gh#NN`, and `owner/repo#NN` are
+    // intentional reference shapes. See extractReferences header.
+    const body = 'See PR #524 for context. Originally reported in #999.';
+    const refs = extractReferences(body);
+    const raws = refs.map((r) => r.raw);
+    expect(raws).not.toContain('#524');
+    expect(raws).not.toContain('#999');
   });
 
   it('extracts RFC and AISDLC IDs', () => {
@@ -42,15 +56,32 @@ describe('extractReferences', () => {
     expect(raws).toContain('AISDLC-115.1');
   });
 
-  it('extracts backtick-quoted file paths', () => {
-    const refs = extractReferences('change `pipeline-cli/src/foo.ts` and `spec/schemas/x.json`');
+  it('does NOT extract backtick-quoted file paths from body prose (narrowed 2026-05-23)', () => {
+    // Body-prose backtick paths often appear as hypothetical examples in AC
+    // descriptions (e.g. "a changed file at `pkg/bin/cli-foo.mjs`"). The old
+    // extractor flagged these as references that must resolve, dumbing down
+    // task wording. Narrowed: file references go in frontmatter `references:`
+    // or markdown links. See header comment on extractReferences.
+    const refs = extractReferences(
+      'change `pipeline-cli/src/foo.ts` and `spec/schemas/x.json` and a hypothetical `pkg/bin/cli-foo.mjs`',
+    );
+    const raws = refs.map((r) => r.raw);
+    expect(raws).not.toContain('pipeline-cli/src/foo.ts');
+    expect(raws).not.toContain('spec/schemas/x.json');
+    expect(raws).not.toContain('pkg/bin/cli-foo.mjs');
+  });
+
+  it('still extracts file refs from markdown links (intentional reference shape)', () => {
+    const refs = extractReferences(
+      'see [the helper](pipeline-cli/src/foo.ts) and [the schema](spec/schemas/x.json)',
+    );
     const raws = refs.map((r) => r.raw);
     expect(raws).toContain('pipeline-cli/src/foo.ts');
     expect(raws).toContain('spec/schemas/x.json');
   });
 
   it('dedupes', () => {
-    const refs = extractReferences('see #42 and again #42');
+    const refs = extractReferences('fixes #42 and resolves #42');
     expect(refs.filter((r) => r.raw === '#42').length).toBe(1);
   });
 

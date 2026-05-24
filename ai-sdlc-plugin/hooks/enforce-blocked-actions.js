@@ -22,7 +22,12 @@ const { execSync } = require('child_process');
 
 let input;
 try {
-  const raw = readFileSync('/dev/stdin', 'utf-8');
+  // Read from fd 0 (stdin) rather than '/dev/stdin' — the device-file path
+  // ENXIOs on some Linux runners (e.g. GitHub Actions ubuntu-latest) where
+  // /dev/stdin's state after a spawn rejects open(). Reading fd 0 directly
+  // works cross-platform (macOS, Linux, Windows). Fixed 2026-05-23 after
+  // the AC-2 (real-hook) test failed only in CI.
+  const raw = readFileSync(0, 'utf-8');
   input = JSON.parse(raw);
 } catch {
   process.exit(0);

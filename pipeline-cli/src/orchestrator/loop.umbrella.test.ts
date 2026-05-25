@@ -9,8 +9,11 @@
  *      populated with the right failure type, outcome is the matching
  *      PipelineOutcome.
  *   3. Spawner-fallback (AI_SDLC_ORCHESTRATOR_SPAWNER_FALLBACK=api-key):
- *      when the first claude-cli attempt fails with a spawner-unavailable
- *      reason, the umbrella retries with api-key.
+ *      pre-AISDLC-377.6 this section covered the claude-cli "manifest not
+ *      consumed → api-key retry" path; after the claude-cli removal the
+ *      retry guard never fires, so the tests now assert the no-retry
+ *      contract (the env var is still honored as a billing-safety signal,
+ *      but produces no behavioural retry).
  *   4. Backward-compat: existing `dispatch` adapter (legacy DispatchFn)
  *      continues to work unchanged — pipeline/failure fields remain undefined.
  *   5. tick output schema unchanged: dispatched/outcomes/escalations/idleEvent
@@ -423,6 +426,58 @@ describe('runOrchestratorTick — umbrella dispatch (AISDLC-229)', () => {
     }
   });
 
+  it('throws actionable migration error when AI_SDLC_ORCHESTRATOR_SPAWNER=claude-cli (AISDLC-377.6)', async () => {
+    const previousSpawner = process.env[ORCHESTRATOR_SPAWNER_ENV];
+    process.env[ORCHESTRATOR_SPAWNER_ENV] = 'claude-cli';
+
+    try {
+      await expect(
+        runOrchestratorTick(
+          config,
+          {
+            logger: silentLogger(),
+            frontier: fakeFrontier(['AISDLC-377.6-LEGACY-SPAWNER']),
+            escalate: async () => {},
+            ...hermeticFilterAdapters(),
+          },
+          1,
+        ),
+      ).rejects.toThrow(/AISDLC-377\.6|no longer supported/);
+    } finally {
+      if (previousSpawner === undefined) {
+        delete process.env[ORCHESTRATOR_SPAWNER_ENV];
+      } else {
+        process.env[ORCHESTRATOR_SPAWNER_ENV] = previousSpawner;
+      }
+    }
+  });
+
+  it('throws "must be one of" error when AI_SDLC_ORCHESTRATOR_SPAWNER is unknown', async () => {
+    const previousSpawner = process.env[ORCHESTRATOR_SPAWNER_ENV];
+    process.env[ORCHESTRATOR_SPAWNER_ENV] = 'garbage-not-a-spawner';
+
+    try {
+      await expect(
+        runOrchestratorTick(
+          config,
+          {
+            logger: silentLogger(),
+            frontier: fakeFrontier(['AISDLC-377.6-GARBAGE-SPAWNER']),
+            escalate: async () => {},
+            ...hermeticFilterAdapters(),
+          },
+          1,
+        ),
+      ).rejects.toThrow(/must be one of/);
+    } finally {
+      if (previousSpawner === undefined) {
+        delete process.env[ORCHESTRATOR_SPAWNER_ENV];
+      } else {
+        process.env[ORCHESTRATOR_SPAWNER_ENV] = previousSpawner;
+      }
+    }
+  });
+
   it('surfaces missing CODEX_SPAWN_AGENT_BIN as spawner-unavailable before rollback work', async () => {
     const taskId = 'AISDLC-326-CODEX-MISSING-BRIDGE';
     const umbrellaExecutor = async (): Promise<ExecuteCommandResult> => ({
@@ -468,22 +523,20 @@ describe('runOrchestratorTick — umbrella dispatch (AISDLC-229)', () => {
       }
     });
 
-    it('falls back to api-key when claude-cli spawner fails with spawner-unavailable reason', async () => {
+    // RFC-0041 Phase 3.3 (AISDLC-377.6) — the `claude-cli` spawner kind was
+    // removed; the original "claude-cli spawner-unavailable → api-key retry"
+    // test pair (AISDLC-229 AC #2 path) no longer exercises any live code path
+    // because the kind cannot be selected. The retry-no-op contract is what
+    // matters now: when ANY non-fallback spawner fails, the umbrella records
+    // the failure once and does NOT retry against api-key.
+    it('does NOT retry against api-key when claude spawner fails (AISDLC-377.6 — claude-cli fallback removed)', async () => {
       process.env.AI_SDLC_ORCHESTRATOR_SPAWNER_FALLBACK = 'api-key';
-      const taskId = 'AISDLC-229-FALLBACK';
+      const taskId = 'AISDLC-377.6-NO-FALLBACK';
       const calls: Array<string> = [];
 
-      const umbrellaExecutor = async (t: string, kind: string): Promise<ExecuteCommandResult> => {
+      const umbrellaExecutor = async (_t: string, kind: string): Promise<ExecuteCommandResult> => {
         calls.push(kind);
-        if (kind === 'claude-cli') {
-          // Simulate spawner-unavailable: AISDLC-225 consumer bridge missing.
-          return {
-            ok: false,
-            reason: 'claude-cli spawner: manifest not consumed by slash command body',
-          };
-        }
-        // api-key fallback succeeds
-        return successExecResult(t);
+        return { ok: false, reason: 'claude spawner failure (simulated)' };
       };
 
       const tick = await runOrchestratorTick(
@@ -491,9 +544,7 @@ describe('runOrchestratorTick — umbrella dispatch (AISDLC-229)', () => {
         {
           logger: silentLogger(),
           frontier: fakeFrontier([taskId]),
-          // AISDLC-352: explicitly select claude-cli to test the fallback path;
-          // the default spawner changed to 'claude' in AISDLC-352.
-          umbrellaSpawnerKind: 'claude-cli',
+          umbrellaSpawnerKind: 'claude',
           umbrellaExecutor: umbrellaExecutor as unknown as OrchestratorAdapters['umbrellaExecutor'],
           escalate: async () => {},
           ...hermeticFilterAdapters(),
@@ -501,14 +552,10 @@ describe('runOrchestratorTick — umbrella dispatch (AISDLC-229)', () => {
         1,
       );
 
-      // Two calls: first claude-cli (failed), then api-key (succeeded).
-      expect(calls).toEqual(['claude-cli', 'api-key']);
-
-      expect(tick.dispatched).toEqual([taskId]);
+      // Only one call — no retry attempted post-AISDLC-377.6.
+      expect(calls).toEqual(['claude']);
       const outcome = tick.outcomes[0];
-      expect(outcome.outcome).toBe('approved');
-      expect(outcome.failure).toBeUndefined();
-      expect(outcome.pipeline).toBeDefined();
+      expect(outcome.failure).toBeDefined();
     });
 
     it('does NOT fall back when AI_SDLC_ORCHESTRATOR_SPAWNER_FALLBACK is unset', async () => {
@@ -518,7 +565,7 @@ describe('runOrchestratorTick — umbrella dispatch (AISDLC-229)', () => {
 
       const umbrellaExecutor = async (_t: string, kind: string): Promise<ExecuteCommandResult> => {
         calls.push(kind);
-        return { ok: false, reason: 'claude-cli spawner failure' };
+        return { ok: false, reason: 'claude spawner failure' };
       };
 
       const tick = await runOrchestratorTick(
@@ -526,9 +573,7 @@ describe('runOrchestratorTick — umbrella dispatch (AISDLC-229)', () => {
         {
           logger: silentLogger(),
           frontier: fakeFrontier([taskId]),
-          // AISDLC-352: explicitly select claude-cli to test that no fallback is
-          // attempted; the default spawner changed to 'claude' in AISDLC-352.
-          umbrellaSpawnerKind: 'claude-cli',
+          umbrellaSpawnerKind: 'claude',
           umbrellaExecutor: umbrellaExecutor as unknown as OrchestratorAdapters['umbrellaExecutor'],
           escalate: async () => {},
           ...hermeticFilterAdapters(),
@@ -537,7 +582,7 @@ describe('runOrchestratorTick — umbrella dispatch (AISDLC-229)', () => {
       );
 
       // Only one call — no fallback attempted.
-      expect(calls).toEqual(['claude-cli']);
+      expect(calls).toEqual(['claude']);
 
       expect(tick.dispatched).toEqual([taskId]);
       const outcome = tick.outcomes[0];

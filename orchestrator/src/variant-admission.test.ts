@@ -41,9 +41,11 @@ function makeVariants(): Record<string, VariantOverlay[]> {
           sizeRange: { minStaff: 1, maxStaff: 50 },
         },
         designOverrides: {
-          voiceRegister: 'approachable-municipal',
           colorPaletteOverlay: 'small-utility-warm',
           densityProfile: 'comfortable',
+          typographyScale: 'large-print',
+          motionProfile: 'reduced',
+          radiusProfile: 'rounded',
         },
         designOverridesExt: {
           // Vendor-prefix per OQ-5
@@ -58,9 +60,11 @@ function makeVariants(): Record<string, VariantOverlay[]> {
           sizeRange: { minStaff: 51, maxStaff: 5000 },
         },
         designOverrides: {
-          voiceRegister: 'professional-administrative',
           colorPaletteOverlay: 'enterprise-cool',
           densityProfile: 'compact',
+          typographyScale: 'default',
+          motionProfile: 'full',
+          radiusProfile: 'default',
         },
         designImperatives: ['bulk-operation-efficiency', 'multi-tab-workflow-tolerance'],
       },
@@ -70,7 +74,11 @@ function makeVariants(): Record<string, VariantOverlay[]> {
           segments: ['county-government', 'regional-coordinator'],
           sizeRange: { minStaff: 20, maxStaff: 200 },
         },
-        designOverrides: { voiceRegister: 'inter-agency-formal' },
+        designOverrides: {
+          colorPaletteOverlay: 'county-neutral',
+          densityProfile: 'comfortable',
+          radiusProfile: 'default',
+        },
       },
     ],
     'spry-billing': [
@@ -534,7 +542,11 @@ describe('computeVariantScopedScores', () => {
         {
           id: 'small-utility',
           audienceCharacteristics: { segments: ['municipal-small'] },
-          designOverrides: { voiceRegister: 'approachable-municipal' },
+          designOverrides: {
+            colorPaletteOverlay: 'small-utility-warm',
+            densityProfile: 'comfortable' as const,
+            typographyScale: 'large-print' as const,
+          },
           designOverridesExt: {
             'acme.com/accessibilityProfile': 'low-tech-fluency',
             'beta.org/legalDisclosureLevel': 2,

@@ -43,16 +43,43 @@ import type { Tessellation } from '@ai-sdlc/reference';
 
 /**
  * Framework-owned `designOverrides` enum fields per RFC-0017 §6.1 + OQ-5.
+ *
+ * **v0.4 update (Mo's Design-Authority editorial pass, 2026-05-26):**
+ * `voiceRegister` was CUT from the framework enum — content register lives
+ * outside the visual token surface per 6/6 leading design systems surveyed
+ * (Tailwind, Radix, Material, Carbon, Spectrum, Atlassian). Three new fields
+ * were ADDED that align with industry-standard theming surfaces:
+ * `typographyScale`, `motionProfile`, `radiusProfile`.
+ *
  * These are the only field names the framework declares; adopters extend via
  * vendor-prefix (see `designOverridesExt` below).
  */
 export interface VariantDesignOverridesFramework {
-  /** Variant-scoped voice register (e.g. "approachable-municipal"). */
-  voiceRegister?: string;
   /** Variant-scoped color palette overlay (additive over soul palette). */
   colorPaletteOverlay?: string;
   /** Variant-scoped density profile. */
   densityProfile?: 'compact' | 'comfortable' | 'spacious';
+  /**
+   * Variant-scoped typography scale.
+   * - `default`     — base type scale (most variants)
+   * - `large-print` — elevated scale for low-tech-fluency or accessibility
+   * - `data-dense`  — condensed scale for data-heavy clerk / CSR surfaces
+   */
+  typographyScale?: 'default' | 'large-print' | 'data-dense';
+  /**
+   * Variant-scoped motion profile.
+   * - `full`    — all transitions active (enterprise / supervisor surfaces)
+   * - `reduced` — prefers-reduced-motion; accessibility + battery conservation
+   * - `none`    — zero animation (extreme battery / accessibility constraints)
+   */
+  motionProfile?: 'full' | 'reduced' | 'none';
+  /**
+   * Variant-scoped radius profile (corner-rounding character).
+   * - `sharp`   — zero-radius utility surface (POS / terminal aesthetic)
+   * - `default` — balanced rounding (most variants)
+   * - `rounded` — generous rounding (consumer-facing / low-tech fluency)
+   */
+  radiusProfile?: 'sharp' | 'default' | 'rounded';
 }
 
 /**

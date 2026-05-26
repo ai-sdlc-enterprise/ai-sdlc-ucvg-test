@@ -271,6 +271,30 @@ export {
   type ParsedVariantRef,
   type VariantScopedSaResult,
 } from './variant-admission.js';
+export {
+  PRODUCT_A_SOUL_ID,
+  PRODUCT_A_VARIANTS,
+  PRODUCT_A_SUBSTRATE_INVARIANTS,
+  PRODUCT_A_SOUL_AGGREGATE_SCORES,
+  PRODUCT_A_VARIANT_SCORES,
+  PRODUCT_B_SOUL_ID,
+  PRODUCT_B_VARIANTS,
+  PRODUCT_B_SUBSTRATE_INVARIANTS,
+  PRODUCT_B_VARIANT_SCORES,
+  PRODUCT_C_SOUL_ID,
+  PRODUCT_C_VARIANTS,
+  PRODUCT_C_SUBSTRATE_INVARIANTS,
+  PRODUCT_C_VARIANT_SCORES,
+  buildInternalAdopterVariantContext,
+} from './internal-adopter-variants.js';
+export {
+  declareVariantDeprecation,
+  transitionVariantLifecycle,
+  runFullDeprecationLifecycle,
+  type VariantDeprecationStateKind,
+  type VariantDeprecationState,
+  type VariantLifecycleDecision,
+} from './variant-lifecycle.js';
 export { combineVariantSaForSoulAlignment } from './admission-composite.js';
 export {
   parseBacklogTask,

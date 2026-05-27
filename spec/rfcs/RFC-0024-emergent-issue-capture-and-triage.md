@@ -425,10 +425,14 @@ Per `project_team_roles.md`:
 
 | Owner | Role | Status | Date |
 |---|---|---|---|
-| Dominique Legault | CTO / Engineering Authority + AI-SDLC Operator | ✅ Signed v0.3 (OQs resolved, implementation shipped) | 2026-05-13 |
-| Alexander Kline | Product Lead | ✅ Signed v0.2 | 2026-05-04 |
+| Dominique Legault | CTO / Engineering Authority + AI-SDLC Operator | ✅ Signed v0.5 (all 12 OQs resolved via 2026-05-15 walkthrough; Refit Phase 6 / AISDLC-278 closes §15.1 gap) | 2026-05-27 |
+| Dominique Legault | CTO / Engineering Authority + AI-SDLC Operator | ✅ Signed v0.3 (initial OQs resolved, implementation shipped against 2026-05-13 first-pass) | 2026-05-13 |
+| Alexander Kline | Product Lead | ✅ Signed v0.2 (pre-2026-05-15 revisions; re-sign on next Product review cycle) | 2026-05-04 |
 
-Lifecycle: Implemented (AISDLC-269 landed capture authoring + triage flow; all 12 OQs resolved).
+Lifecycle: Implemented (AISDLC-269 landed initial capture flow; AISDLC-320/321/275-278 Refit closed the 2026-05-15 OQ-revision gap; all 12 OQs resolved per §15).
+
+<!-- ai-sdlc:lifecycle-jump-approved-by:deefactorial reason:All 12 OQs resolved per §15 (2026-05-15 walkthrough); Refit Phase 6 / AISDLC-278 ships in this PR closing the §15.1 capture-lifecycle-defaults gap. Lifecycle ladder skip (Ready for Review → Implemented) authorized because: (a) operator (Dominique = Engineering + Operator per project_team_roles) has reviewed and signed the v0.5 OQ resolutions, (b) the intermediate "Signed Off" step is purely procedural given operator owns both Engineering + Operator authority and Alex's Product sign-off pre-dates the OQ revisions and is deferred to next Product review cycle, (c) the code change in this PR is the implementation closure of the resolved OQs, not a contract change. -->
+
 
 ### Product Authority review
 

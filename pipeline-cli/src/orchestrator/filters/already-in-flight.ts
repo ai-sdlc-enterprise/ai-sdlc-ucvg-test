@@ -35,7 +35,7 @@
  * @module orchestrator/filters/already-in-flight
  */
 
-import { execSync } from 'node:child_process';
+import { execSync, execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import type { FilterResult } from './types.js';
@@ -94,7 +94,7 @@ export interface CheckAlreadyInFlightOpts {
  * the first in-flight signal found; returns `{ ..., passed: true }` when no
  * signals fire.
  *
- * Async-free: all three probes are synchronous (gh via `execSync`, fs via
+ * Async-free: all three probes are synchronous (gh via `execFileSync`, fs via
  * `existsSync`, ps via `execSync`). The orchestrator loop calls this inside a
  * synchronous filter chain — keeping it sync avoids wrapping the whole chain
  * in async.
@@ -178,8 +178,11 @@ export function checkAlreadyInFlight(opts: CheckAlreadyInFlightOpts): FilterResu
  * Throws on non-zero exit (caller catches and skips).
  */
 function runGhPRList(headPattern: string): { number: number }[] {
-  const stdout = execSync(
-    `gh pr list --head ${JSON.stringify(headPattern)} --state open --json number`,
+  // execFile (array args, no shell) so headPattern can't inject — `gh pr list`
+  // via a shell string was flagged js/shell-command-constructed-from-input.
+  const stdout = execFileSync(
+    'gh',
+    ['pr', 'list', '--head', headPattern, '--state', 'open', '--json', 'number'],
     { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] },
   ).trim();
   if (stdout === '' || stdout === '[]') return [];

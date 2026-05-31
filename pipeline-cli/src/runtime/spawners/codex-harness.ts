@@ -247,7 +247,11 @@ export function tryParseJson(output: string): unknown | undefined {
   } catch {
     // Tolerate JSON wrapped in markdown fences (Codex agents sometimes
     // emit ```json … ``` despite system prompts asking for raw JSON).
-    const fenced = trimmed.match(/```(?:json)?\s*([\s\S]+?)\s*```/);
+    // Drop the leading optional-whitespace group: any `[ \t]*`/`\s*` before the
+    // lazy `[\s\S]+?` overlaps it (both match space/tab) — the polynomial-
+    // backtracking source (CodeQL js/polynomial-redos). The bounded `\n?` is
+    // safe; JSON.parse below tolerates residual whitespace inside the capture.
+    const fenced = trimmed.match(/```(?:json)?\n?([\s\S]+?)```/);
     if (fenced && fenced[1]) {
       try {
         return JSON.parse(fenced[1]);

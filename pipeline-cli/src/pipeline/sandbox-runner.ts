@@ -1636,6 +1636,18 @@ export function buildDockerRunArgs(opts: DockerRunArgsInput): string[] {
     `seccomp=${seccompProfileJson}`,
     '--security-opt',
     'no-new-privileges',
+    // Forward the data-carrying env vars from the docker CLI process env INTO
+    // the container. `docker run` does NOT inherit the host environment, so the
+    // values set on the spawn() env — SANDBOX_PR_DIFF_B64 (the diff to apply)
+    // and SANDBOX_FIXTURE_B64 (the offline fixture tarball, fixture-demo mode) —
+    // must be passed explicitly with `-e KEY` (value pulled from the docker
+    // process env). Without this the in-container script sees them unset and
+    // fail-closes (the AISDLC-520 "no pre-cloned repo" symptom). `-e KEY` with
+    // KEY absent from the host env is a harmless no-op.
+    '-e',
+    'SANDBOX_PR_DIFF_B64',
+    '-e',
+    'SANDBOX_FIXTURE_B64',
     // Extra args (e.g. --add-host=inference.local:host-gateway) injected before image name.
     // These allow the container to reach the host-side inference proxy despite --network=none.
     ...(extraDockerArgs ?? []),

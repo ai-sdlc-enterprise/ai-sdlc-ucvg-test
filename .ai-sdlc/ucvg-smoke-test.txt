@@ -1,0 +1,2 @@
+UCVG smoke test (AISDLC-514): this file mutates a protected path (.ai-sdlc/**)
+and MUST be blocked at Stage 1 with abort-protected-path. Inert test fixture.

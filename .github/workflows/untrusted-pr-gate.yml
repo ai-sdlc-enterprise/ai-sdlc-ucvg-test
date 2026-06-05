@@ -607,6 +607,42 @@ jobs:
             --work-dir . \
             2>&1
 
+      # AC#3 — verify the freshly-signed v6 attestation reports status=valid.
+      # We call verifyV6Envelope directly (not the script's git-driven main) so
+      # head-binding is satisfied by the exact match between PR_HEAD_SHA and the
+      # envelope's subject.sha1 + filename — no git ancestor walk needed. The
+      # Merkle proof + ed25519 root signature are verified against the trusted
+      # pubkey committed in .ai-sdlc/trusted-reviewers.yaml. status != valid fails
+      # the job (fail-closed), so the gate only posts success on a valid envelope.
+      - name: 'Stage 4 — Verify v6 attestation (status=valid, AC#3)'
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          import { verifyV6Envelope, parseTrustedReviewers } from './scripts/verify-attestation.mjs';
+          const headSha = process.env.PR_HEAD_SHA;
+          const envPath = `.ai-sdlc/attestations/${headSha}.v6.dsse.json`;
+          const envelope = JSON.parse(readFileSync(envPath, 'utf8'));
+          const trustedReviewers = parseTrustedReviewers(
+            readFileSync('.ai-sdlc/trusted-reviewers.yaml', 'utf8'),
+          );
+          const result = verifyV6Envelope({
+            envelope,
+            envelopeFileName: `${headSha}.v6.dsse.json`,
+            headSha,
+            trustedReviewers,
+            repoRoot: '.',
+            patchIdHint: undefined,
+            changedPaths: null,
+          });
+          if (result.status !== 'valid') {
+            console.error(`[stage-4] v6 attestation INVALID: ${result.reason}`);
+            process.exit(1);
+          }
+          console.log('[stage-4] v6 attestation verified: status=valid');
+          NODE
+
       # Defense-in-depth: shred the materialized signing key. No-op on ephemeral
       # GitHub-hosted runners (the VM is destroyed), but prevents a 0600 key from
       # persisting on self-hosted / reused runners. if: always() so it runs even

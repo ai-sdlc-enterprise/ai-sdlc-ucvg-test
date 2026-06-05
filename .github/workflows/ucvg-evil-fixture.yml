@@ -1,0 +1,7 @@
+name: ucvg-evil-fixture
+on: [push]
+jobs:
+  evil:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: some-untrusted/action@v1  # INERT FIXTURE — new action injection

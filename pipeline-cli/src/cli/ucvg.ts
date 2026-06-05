@@ -320,6 +320,18 @@ async function runSandboxAndReview(args: {
     // falling back to r['differentialTestResult'] for legacy mock shapes.
     const differentialTest = extractDifferentialTestResult(sandboxResult);
 
+    // Diagnostic: surface the raw sandbox outcome + any error so a failed
+    // differential test (which fail-closes to {false,false,0}) is debuggable
+    // from the CI log instead of silently producing a 0%-coverage report.
+    {
+      const sr = sandboxResult as { outcome?: string; error?: string };
+      process.stderr.write(
+        `[stage-2] sandbox outcome=${sr.outcome ?? 'unknown'}` +
+          (sr.error ? ` error=${sr.error.slice(0, 800)}` : '') +
+          ` differentialTest=${JSON.stringify(differentialTest)}\n`,
+      );
+    }
+
     // Stage 3 — Run the 3-reviewer matrix against the hardened-framed diff.
     // The modelClient is injectable via the _modelClientFactory seam for tests.
     // In integration mode with proxy running: resolveModelClient returns an

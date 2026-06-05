@@ -29,6 +29,7 @@
  */
 
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { classifyTrust } from '../pipeline/trust-classifier.js';
 import { runAstGate, loadAstGateConfig, buildBlockedEvent } from '../pipeline/ast-gate.js';
@@ -466,12 +467,39 @@ async function readStdin(): Promise<string> {
   });
 }
 
-function computePrDiff(prContentDir: string, _baseSha: string, _headSha: string): string {
-  // In the CI context, the diff is computed from git objects in the pr-content/ checkout.
-  // This is data-only — no fork code is executed.
-  // For the CLI wrapper, we produce a summary for the sandbox runner.
-  // The actual differential testing happens inside the OpenShell sandbox.
-  return `[diff computed from ${prContentDir} for ${_baseSha}..${_headSha}]`;
+function computePrDiff(prContentDir: string, baseSha: string, headSha: string): string {
+  // Compute the real PR diff from git objects in the pr-content/ checkout.
+  // This is DATA-ONLY (fork-PR safety guard #2): `git diff` reads committed
+  // objects and never executes any fork-provided script. Both baseSha and
+  // headSha are reachable because the pr-content checkout uses fetch-depth: 0.
+  //
+  // Three-dot (`base...head`) yields only the changes the PR introduced since
+  // the merge-base, excluding unrelated base-branch churn. The attestations
+  // directory is excluded from the diff so reviewers focus on source changes.
+  //
+  // Both SHAs are validated to be 7-64 hex chars before interpolation to keep
+  // execFileSync's argv free of any metacharacter risk (defense-in-depth even
+  // though execFileSync does not invoke a shell).
+  const shaRe = /^[0-9a-f]{7,64}$/i;
+  if (!shaRe.test(baseSha) || !shaRe.test(headSha)) {
+    throw new Error(
+      `computePrDiff: baseSha/headSha must be 7-64 hex chars (got base='${baseSha}', head='${headSha}')`,
+    );
+  }
+  return execFileSync(
+    'git',
+    [
+      '-C',
+      prContentDir,
+      'diff',
+      '--no-color',
+      `${baseSha}...${headSha}`,
+      '--',
+      '.',
+      ':(exclude).ai-sdlc/attestations/**',
+    ],
+    { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
+  );
 }
 
 function extractDifferentialTestResult(sandboxResult: unknown): DifferentialTestResult {

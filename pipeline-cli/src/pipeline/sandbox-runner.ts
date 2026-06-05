@@ -63,7 +63,7 @@
  * @module pipeline/sandbox-runner
  */
 
-import { existsSync, readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { spawn, type ChildProcess, type SpawnOptions } from 'node:child_process';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -971,6 +971,14 @@ export class DockerSandboxDriver extends BaseSandboxDriver {
     const cidFilePath = join(cidDir, 'container.cid');
     this.cidFilePath = cidFilePath;
 
+    // `docker run --security-opt seccomp=<value>` expects a FILE PATH (or the
+    // literal 'unconfined') — NOT inline JSON. Passing the profile JSON inline
+    // makes docker try to open it as a filename and fail with exit code 125
+    // ("opening seccomp profile"). Write the profile to a file in the per-spawn
+    // temp dir and pass its path. The file is removed with cidDir in teardown.
+    const seccompFilePath = join(cidDir, 'seccomp.json');
+    writeFileSync(seccompFilePath, seccompJson, { mode: 0o600 });
+
     // Build the in-container differential test script.
     // The script is passed as a shell -c argument (not written to disk on the
     // host) so it is not affected by the container's read-only filesystem.
@@ -984,7 +992,9 @@ export class DockerSandboxDriver extends BaseSandboxDriver {
     // so the container can reach the host-side inference proxy despite --network=none.
     const args = buildDockerRunArgs({
       resourceLimits,
-      seccompProfileJson: seccompJson,
+      // Pass the seccomp FILE PATH (docker --security-opt seccomp=<path>), not
+      // the inline JSON — see the seccompFilePath comment above.
+      seccompProfileJson: seccompFilePath,
       cidFilePath,
       image: process.env['AI_SDLC_SANDBOX_IMAGE'] ?? 'node:22-slim',
       command: ['/bin/sh', '-c', inContainerScript],

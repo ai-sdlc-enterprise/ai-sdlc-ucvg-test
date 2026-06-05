@@ -5,6 +5,31 @@
      conventional-commit messages and prepends a dated section when the
      rolling release PR lands. See docs/operations/release-flow.md. -->
 
+## [0.13.0](https://github.com/ai-sdlc-framework/ai-sdlc/compare/orchestrator-v0.12.0...orchestrator-v0.13.0) (2026-06-05)
+
+
+### Features
+
+* **orchestrator:** AISDLC-465 RFC-0018 Phase 1 journeys[] schema + limits + inheritance validator ([#824](https://github.com/ai-sdlc-framework/ai-sdlc/issues/824)) ([c8f449a](https://github.com/ai-sdlc-framework/ai-sdlc/commit/c8f449a3121771c64260e865ba4dfbf414647926))
+* **orchestrator:** AISDLC-489 refactor 3 §13 rules into Tessellation13Registry (467 AC[#3](https://github.com/ai-sdlc-framework/ai-sdlc/issues/3) follow-up) ([#825](https://github.com/ai-sdlc-framework/ai-sdlc/issues/825)) ([0becfd2](https://github.com/ai-sdlc-framework/ai-sdlc/commit/0becfd234d3c85cd20ff61de92c95b1f6f0e0f4c))
+* **orchestrator:** franc-based language gate + multi-lang opt-in (AISDLC-431) ([#756](https://github.com/ai-sdlc-framework/ai-sdlc/issues/756)) ([745a238](https://github.com/ai-sdlc-framework/ai-sdlc/commit/745a23809913173fa33a147061a4dddc37eeb11d))
+* **orchestrator:** rfc-0018 phase 2 journey-scoped admission scorer (AISDLC-466) ([#802](https://github.com/ai-sdlc-framework/ai-sdlc/issues/802)) ([7e1c9a9](https://github.com/ai-sdlc-framework/ai-sdlc/commit/7e1c9a93aa3012d328ec3abda26f6017afddf0b2))
+* **orchestrator:** ship §13 rule registry + journey-state-id drift rule (AISDLC-467) ([#803](https://github.com/ai-sdlc-framework/ai-sdlc/issues/803)) ([00550fd](https://github.com/ai-sdlc-framework/ai-sdlc/commit/00550fde29337f16773586ae1b1f58a635fda58b))
+* RFC-0028 Phase 3 — structural + statistical drift composition wiring (AISDLC-454) ([#798](https://github.com/ai-sdlc-framework/ai-sdlc/issues/798)) ([744d566](https://github.com/ai-sdlc-framework/ai-sdlc/commit/744d5669e2a799afeab0ec3da8098418ecb2baaf))
+
+
+### Bug Fixes
+
+* harden 17 ReDoS-prone regexes (CodeQL js/polynomial-redos) ([#820](https://github.com/ai-sdlc-framework/ai-sdlc/issues/820)) ([070864e](https://github.com/ai-sdlc-framework/ai-sdlc/commit/070864e01bddd88d6fa3175cd80c59792b52318e))
+* **security:** harden command-injection sites (CodeQL js/shell-command-constructed-from-input) ([#812](https://github.com/ai-sdlc-framework/ai-sdlc/issues/812)) ([be944e9](https://github.com/ai-sdlc-framework/ai-sdlc/commit/be944e92bd262172408223dbc999a9504e02e8fc))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @ai-sdlc/reference bumped to 0.13.0
+
 ## [0.12.0](https://github.com/ai-sdlc-framework/ai-sdlc/compare/orchestrator-v0.11.0...orchestrator-v0.12.0) (2026-05-29)
 
 

@@ -327,7 +327,7 @@ async function runSandboxAndReview(args: {
       const sr = sandboxResult as { outcome?: string; error?: string };
       process.stderr.write(
         `[stage-2] sandbox outcome=${sr.outcome ?? 'unknown'}` +
-          (sr.error ? ` error=${sr.error.slice(0, 800)}` : '') +
+          (sr.error ? ` error=${sr.error.slice(0, 8000)}` : '') +
           ` differentialTest=${JSON.stringify(differentialTest)}\n`,
       );
     }

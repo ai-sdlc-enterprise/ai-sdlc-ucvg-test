@@ -1094,7 +1094,7 @@ export class DockerSandboxDriver extends BaseSandboxDriver {
           reject(
             new Error(
               `Docker container exited with code ${exitCode}. ` +
-                `stdout: ${stdout.slice(0, 500)} stderr: ${stderr.slice(0, 500)}`,
+                `stdout: ${stdout.slice(0, 4000)} stderr: ${stderr.slice(0, 4000)}`,
             ),
           );
           return;

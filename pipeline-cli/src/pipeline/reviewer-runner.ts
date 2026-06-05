@@ -571,7 +571,7 @@ export class InferenceProxyClient implements ModelClient {
   constructor(config: InferenceProxyClientConfig) {
     this.config = {
       provider: 'anthropic',
-      model: 'claude-3-5-sonnet-20241022',
+      model: process.env['AI_SDLC_REVIEWER_MODEL'] ?? 'claude-sonnet-4-6',
       ...config,
     };
   }

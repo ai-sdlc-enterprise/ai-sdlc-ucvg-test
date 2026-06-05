@@ -255,6 +255,25 @@ async function runSandboxAndReview(args: {
       sandboxEnv = buildReviewerProxyEnv({ port, sessionToken });
       proxyHostArgs = buildProxyHostArg();
 
+      // Fixture-demo mode (RFC-0043 AQ2 live demo — option B). When
+      // AI_SDLC_UCVG_FIXTURE_SUBDIR is set, ship the trusted base fixture tree
+      // (a tiny zero-dep repo at <workDir>/<subdir>) into the sandbox as a
+      // base64 gzip tarball via the sandbox env. The in-container differential
+      // test (buildDifferentialTestScript) materializes it offline — no clone,
+      // no install — so the suite runs under --network=none. NO credential is
+      // ever placed in this env; the tarball is source-only fixture data.
+      const fixtureSubdir = process.env['AI_SDLC_UCVG_FIXTURE_SUBDIR'];
+      if (fixtureSubdir && /^[A-Za-z0-9._/-]+$/.test(fixtureSubdir)) {
+        const fixtureDir = join(args.workDir, fixtureSubdir.replace(/\/+$/, ''));
+        const tarB64 = execFileSync('tar', ['-C', fixtureDir, '-cz', '.'], {
+          maxBuffer: 32 * 1024 * 1024,
+        }).toString('base64');
+        sandboxEnv['SANDBOX_FIXTURE_B64'] = tarB64;
+        process.stderr.write(
+          `[stage-2] fixture-demo mode: staged ${fixtureSubdir} (${String(tarB64.length)} b64 bytes) for offline differential test\n`,
+        );
+      }
+
       // Wire the proxy vars into the current process env so resolveModelClient()
       // builds an InferenceProxyClient pointing at the live proxy (AC#2).
       // Uses '127.0.0.1' (loopback) because reviewers run on the host side here;
@@ -486,6 +505,33 @@ function computePrDiff(prContentDir: string, baseSha: string, headSha: string): 
       `computePrDiff: baseSha/headSha must be 7-64 hex chars (got base='${baseSha}', head='${headSha}')`,
     );
   }
+
+  // Fixture-demo mode (RFC-0043 AQ2 live demo — option B). When
+  // AI_SDLC_UCVG_FIXTURE_SUBDIR is set, the differential test runs against a
+  // standalone zero-dep fixture repo whose root is the *contents* of that
+  // subdir (materialized in-container from a tarball). The diff must therefore
+  // be re-rooted (paths relative to the subdir) so `git apply` lands on the
+  // fixture root. `--relative=<subdir>/` strips the prefix from output paths;
+  // the pathspec scopes the diff to the fixture so unrelated changes are ignored.
+  const fixtureSubdir = process.env['AI_SDLC_UCVG_FIXTURE_SUBDIR'];
+  if (fixtureSubdir && /^[A-Za-z0-9._/-]+$/.test(fixtureSubdir)) {
+    const sub = fixtureSubdir.replace(/\/+$/, '');
+    return execFileSync(
+      'git',
+      [
+        '-C',
+        prContentDir,
+        'diff',
+        '--no-color',
+        `--relative=${sub}/`,
+        `${baseSha}...${headSha}`,
+        '--',
+        `${sub}/`,
+      ],
+      { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
+    );
+  }
+
   return execFileSync(
     'git',
     [

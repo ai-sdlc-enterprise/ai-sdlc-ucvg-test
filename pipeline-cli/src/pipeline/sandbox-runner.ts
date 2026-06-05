@@ -1418,7 +1418,18 @@ cd "$WORK_DIR"
 # SHA or a known-scheme URL before being interpolated here.
 UPSTREAM_REF='${escapedRef}'
 
-if echo "$UPSTREAM_REF" | grep -qE '^(https?|git|ssh)://|^git@'; then
+if [ -n "\${SANDBOX_FIXTURE_B64:-}" ]; then
+  # Fixture-demo mode (RFC-0043 AQ2 live demo — option B). The trusted base
+  # tree is a tiny zero-dependency repo supplied as a base64 gzip tarball via
+  # the SANDBOX_FIXTURE_B64 env var. This is offline-safe under --network=none
+  # (no clone, no dependency install). We materialize it into repo/ and let the
+  # existing base-test → git-apply → head-test sequence run against it.
+  # NOTE: 'git apply' applies to plain working files and does NOT require a git
+  # repository, so no 'git init' is needed (keeps the image footprint minimal).
+  mkdir -p repo
+  cd repo
+  printf '%s' "$SANDBOX_FIXTURE_B64" | base64 -d | tar xz
+elif echo "$UPSTREAM_REF" | grep -qE '^(https?|git|ssh)://|^git@'; then
   # URL path: clone then check out the pinned base SHA (baseSha) if supplied.
   # Without baseSha, the clone lands at default-branch HEAD which may differ
   # from the actual PR merge-base — violating the AISDLC-501 base invariant.

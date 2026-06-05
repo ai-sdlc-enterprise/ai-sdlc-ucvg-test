@@ -406,6 +406,17 @@ jobs:
           # proxy is running. If the proxy fails to start, the code falls back to
           # FakeModelClient (not hard-error) and clears the integration flag vars.
           AI_SDLC_SANDBOX_INTEGRATION_TESTS: ${{ secrets.ANTHROPIC_API_KEY != '' && '1' || '' }}
+          # RFC-0043 AQ2 live demo (option B): run the differential test against a
+          # tiny zero-dependency fixture repo (committed at ./ucvg-demo). The base
+          # fixture tree is shipped into the --network=none sandbox as a tarball;
+          # the PR diff is re-rooted to the subdir so `git apply` + `node --test`
+          # run fully offline (no clone, no install). Unset to use the real repo.
+          AI_SDLC_UCVG_FIXTURE_SUBDIR: ucvg-demo
+          # The differential test uses `git apply` to apply the PR diff inside the
+          # container; node:22-slim has no git, so use the full node:22 image
+          # (includes git). The image is pulled via the host network, then run with
+          # --network=none — the credential-withholding isolation is unchanged.
+          AI_SDLC_SANDBOX_IMAGE: node:22
         run: |
           # Bug E fix: set -o pipefail so a sandbox-run failure propagates through the
           # tee pipe. Without pipefail, `node ... | tee` returns tee's exit code (0),

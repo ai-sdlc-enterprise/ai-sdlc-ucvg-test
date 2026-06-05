@@ -632,7 +632,7 @@ jobs:
           const envelope = JSON.parse(readFileSync(envPath, 'utf8'));
           const trustedReviewers = parseTrustedReviewers(
             readFileSync('.ai-sdlc/trusted-reviewers.yaml', 'utf8'),
-          );
+          ).reviewers;
           const result = verifyV6Envelope({
             envelope,
             envelopeFileName: `${headSha}.v6.dsse.json`,

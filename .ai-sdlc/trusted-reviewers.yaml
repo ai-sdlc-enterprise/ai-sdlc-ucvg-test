@@ -46,13 +46,13 @@
 # verify-attestation workflow's install step first.
 
 reviewers:
-  - identity: 'dominique@reliablegenius.io'
-    machine: 'doms-macbook'
-    addedAt: '2026-04-28'
+  - identity: 'ucvg-test-signer'
+    machine: 'ci-test'
+    addedAt: '2026-06-04'
     addedBy: 'deefactorial'
     pubkey: |
       -----BEGIN PUBLIC KEY-----
-      MCowBQYDK2VwAyEA7RfNqQjnRnt7dG0gjIWIkqyfvn+/aMycmbaEbq7lS7E=
+      MCowBQYDK2VwAyEAKQMpspv7RiZ2ZNN8o7834uZL/dM1kLsMhpNN2CUtAKU=
       -----END PUBLIC KEY-----
 
 # ─── RFC-0043 Phase 1 — Author allowlist extension ────────────────────────────
@@ -92,8 +92,6 @@ reviewers:
 # (everyone trusted; UCVG opt-in only).
 
 allowlist:
-  authors:
-    - login: deefactorial
-      name: Dominique Legault
-      addedAt: '2026-06-02'
-      addedBy: deefactorial
+  # Emptied for the UCVG smoke test (AISDLC-514 e2e): with no trusted authors,
+  # every PR is classified UNTRUSTED so the gate engages.
+  authors: []

@@ -352,6 +352,20 @@ jobs:
             echo "available=true" >> "$GITHUB_OUTPUT"
             echo "degraded=false" >> "$GITHUB_OUTPUT"
             echo "[stage-2] Docker available — full sandbox mode (DockerSandboxDriver)"
+            # Pre-pull the sandbox image (MUST match AI_SDLC_SANDBOX_IMAGE in the
+            # sandbox-run step) with retries. The differential-test `docker run`
+            # uses --network=none, so the image must be present locally BEFORE the
+            # run; an intermittent registry pull at run time fails the container
+            # with exit code 125 ("Unable to find image locally"). Pulling here,
+            # on the host network with retries, makes the run reliably offline.
+            for attempt in 1 2 3 4; do
+              if docker pull node:22; then
+                echo "[stage-2] pre-pulled node:22 (attempt $attempt)"
+                break
+              fi
+              echo "[stage-2] node:22 pull attempt $attempt failed; retrying in 10s..."
+              sleep 10
+            done
           else
             echo "available=false" >> "$GITHUB_OUTPUT"
             echo "degraded=true" >> "$GITHUB_OUTPUT"

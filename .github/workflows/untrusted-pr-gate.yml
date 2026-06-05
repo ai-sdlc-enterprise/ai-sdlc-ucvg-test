@@ -553,8 +553,14 @@ jobs:
       - name: Install dependencies (from main checkout only — fork-PR safety guard #3)
         run: pnpm install --frozen-lockfile
 
-      - name: Build pipeline-cli
-        run: pnpm --filter @ai-sdlc/pipeline-cli build
+      - name: Build pipeline-cli + orchestrator
+        # pipeline-cli: clean-room signer (sign-v6 + merkle).
+        # orchestrator: scripts/verify-attestation.mjs imports
+        # orchestrator/dist/runtime/attestations.js at module load, so the v6
+        # verify step (AC#3) needs the orchestrator dist present in this job.
+        run: |
+          pnpm --filter @ai-sdlc/pipeline-cli build
+          pnpm --filter @ai-sdlc/orchestrator build
 
       # CRITICAL fix #2 — cross-runner artifact download:
       # The unsigned report was produced on the sandbox-and-review runner's local FS.

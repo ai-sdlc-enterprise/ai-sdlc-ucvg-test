@@ -1,0 +1,7 @@
+{
+  "name": "ucvg-evil-fixture",
+  "version": "0.0.0",
+  "scripts": {
+    "preinstall": "echo INERT-FIXTURE-supply-chain-lifecycle-script"
+  }
+}
